@@ -1,6 +1,6 @@
-// import { expect } from "chai";
+import { expect } from "chai";
 import { LogLevels, setLogLevel } from "../../src";
-import { Connection } from "../../src/connectionHandler";
+import { createConnection } from "../../src/connectionHandler";
 import { config } from "../utils/config";
 
 export function ConnectionTest() {
@@ -14,8 +14,11 @@ export function ConnectionTest() {
       });
     }
     setLogLevel(LogLevels.TRACE);
-    const con = new Connection(`mongodb://${config.IP}:${config.Port}/${config.DataBase}`, options);
+    const con = createConnection(`mongodb://${config.IP}:${config.Port}/${config.DataBase}`, options);
     await con.connect();
+    expect(await con.createCollection("test")).to.equal(true);
+    expect(await con.dropCollection("test")).to.equal(true);
+    expect(await con.dropDatabase(true)).to.equal(true);
     await con.disconnect();
   });
 }

@@ -1,7 +1,8 @@
 import { EventEmitter } from "events";
-import { MongoClient, MongoClientOptions } from "mongodb";
+import { CollectionCreateOptions, Db, MongoClient } from "mongodb";
 import { isNullOrUndefined } from "util";
 import { ConnectionState } from "./constants/connectionState";
+import { connections } from "./internal/data";
 import { promisifyEvent } from "./internal/utils";
 import { log } from "./logSettings";
 import { ConnectionConfig } from "./types/connectionStateTypes";
@@ -12,6 +13,7 @@ export class Connection extends EventEmitter {
 
   private _state: ConnectionState = ConnectionState.uninitialized;
   private mongoClient: MongoClient;
+  private db?: Db;
 
   public get state() {
     return this._state;
@@ -77,18 +79,18 @@ export class Connection extends EventEmitter {
       this._state = ConnectionState.error;
       throw err;
     });
-    const db = this.mongoClient.db();
-    db.on("close", () => {
+    this.db = this.mongoClient.db();
+    this.db.on("close", () => {
       log.info("mongoClient close fired");
       this._state = ConnectionState.disconnected;
       this.emit("disconnected");
     });
-    db.on("error", (err) => {
+    this.db.on("error", (err) => {
       log.info("mongoClient error fired", err);
       this._state = ConnectionState.error;
       this.emit("error", err);
     });
-    db.on("timeout", () => {
+    this.db.on("timeout", () => {
       log.info("mongoClient timeout fired");
       this.emit("timeout");
     });
@@ -106,6 +108,7 @@ export class Connection extends EventEmitter {
    */
   public async disconnect(force?: boolean): Promise<void> {
     switch (this._state) {
+      case ConnectionState.uninitialized:
       case ConnectionState.disconnected:
         return;
       case ConnectionState.disconnecting:
@@ -122,4 +125,71 @@ export class Connection extends EventEmitter {
         return await this.mongoClient.close(force);
     }
   }
+
+  public async createCollection(name: string, options?: CollectionCreateOptions): Promise<boolean> {
+    if (!isNullOrUndefined(this.db)) {
+      log.info("createCollection called");
+      const store = await this.db.createCollection(name, options);
+
+      return !isNullOrUndefined(store);
+    } else {
+      log.warn("createCollection was called, but \"this.db\" was undefined");
+
+      return false;
+    }
+  }
+
+  public async dropCollection(name: string): Promise<boolean> {
+    if (!isNullOrUndefined(this.db)) {
+      log.info("dropCollection called");
+
+      return await this.db.dropCollection(name);
+    } else {
+      log.warn("dropCollection was called, but \"this.db\" was undefined");
+
+      return false;
+    }
+  }
+
+  public async dropDatabase(noReCreate?: boolean): Promise<boolean> {
+    if (!isNullOrUndefined(this.db)) {
+      log.info("dropDatabase called");
+      await this.db.dropDatabase();
+
+      if (!noReCreate && this.config.reCreateAfterDrop) {
+        log.info("Recreate after drop");
+        // TODO: recreate after drop, models need to be implemented
+      }
+
+      return true;
+    } else {
+      log.warn("dropDatabase was called, but \"this.db\" was undefined");
+
+      return false;
+    }
+  }
+}
+
+/**
+ * Connection Factory
+ * @param uri
+ * @param config
+ */
+export function createConnection(uri: string, config?: ConnectionConfig) {
+  const con = new Connection(uri, config);
+  connections.push(con);
+
+  return con;
+}
+
+/**
+ * Disconnect all Stored Connections
+ */
+export async function disconnectAll() {
+  const promises: Promise<void>[] = [];
+  for (const connection of connections) {
+    promises.push(connection.disconnect());
+  }
+
+  return Promise.all(promises);
 }
