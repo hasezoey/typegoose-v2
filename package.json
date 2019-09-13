@@ -1,6 +1,6 @@
 {
   "name": "@hasezoey/typegoose-v2",
-  "version": "6.0.0-26",
+  "version": "0.0.1",
   "description": "Mongoose reinterpreted",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

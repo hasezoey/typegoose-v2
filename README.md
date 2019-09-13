@@ -1,34 +1,41 @@
 # Typegoose-v2
 
-<sub>(These badges are from hasezoey:master)</sub>  
+<!-- <sub>(These badges are from hasezoey:master)</sub>  
 [![Build Status](https://travis-ci.com/hasezoey/typegoose-v2.svg?branch=master)](https://travis-ci.com/hasezoey/typegoose-v2)
 [![Coverage Status](https://coveralls.io/repos/github/hasezoey/typegoose-v2/badge.svg?branch=master#feb282019)](https://coveralls.io/github/hasezoey/typegoose-v2?branch=master)
-[![npm](https://img.shields.io/npm/dt/@hasezoey/typegoose-v2-v2.svg)](https://www.npmjs.com/package/@hasezoey/typegoose-v2)
+[![npm](https://img.shields.io/npm/dt/@hasezoey/typegoose-v2-v2.svg)](https://www.npmjs.com/package/@hasezoey/typegoose-v2) -->
 
-Define Mongoose models using TypeScript classes.
+Mongoose reinterpreted
+
+Please know that this is not an finished product, at all
+and please know that i can abandon this at any time
 
 ## Basic usage
 
 ```ts
-import { prop, getModelForClass } from 'typegoose';
+// this example is not working, it is just to show how this package should work when finished
+import { ModelOptions, Prop, Connection, Model } from '@hasezoey/typegoose-v2';
 import * as mongoose from 'mongoose';
 
-mongoose.connect('mongodb://localhost:27017/test');
+@ModelOptions() // default options
+class Kitten extends Model {
+  @Prop({ required: true })
+  public name: string;
 
-class User {
-  @prop()
-  name?: string;
+  @ArrayProp({ items: Kitten })
+  public babies: Kitten[];
 }
 
-const UserModel = getModelForClass(User);
+// const NewKitten = changeOptions(Kitten, {options});
 
-// UserModel is a regular Mongoose Model with correct types
 (async () => {
-  const { _id: id } = await UserModel.create({ name: 'JohnDoe' });
-  const user = await UserModel.findById(id).exec();
+  const connection = new Connection('mongodb://localhost:27017/test');
 
-  console.log(user);
-  // prints { _id: 59218f686409d670a97e53e0, name: 'JohnDoe', __v: 0 }
+  const { _id: id } = await UserModel.create({ name: 'Kitty' });
+  const kittys = await UserModel.findById(id).exec();
+
+  console.log(kittys);
+  // should print { _id: 59218f686409d670a97e53e0, name: 'Kitty', babies: undefined __v: 0 }
 })();
 ```
 

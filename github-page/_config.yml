@@ -7,7 +7,7 @@ remote_theme: mmistakes/minimal-mistakes
 locale: 'en-US'
 minimal_mistakes_skin: 'default'
 markdown: kramdown
-search: true
+# search: true
 
 collections:
   guides:
@@ -60,6 +60,5 @@ kramdown:
   toc_levels: 1..6
   smart_quotes: lsquo,rsquo,ldquo,rdquo
   enable_coderay: false
-
-google:
-  search_engine_id: '015943195979718257496:sxuifq7leav'
+# google:
+#   search_engine_id: '015943195979718257496:sxuifq7leav'
