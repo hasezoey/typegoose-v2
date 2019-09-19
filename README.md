@@ -1,4 +1,4 @@
-# Typegoose-v2
+# Typegoose-v2 (Working Title)
 
 <!-- <sub>(These badges are from hasezoey:master)</sub>  
 [![Build Status](https://travis-ci.com/hasezoey/typegoose-v2.svg?branch=master)](https://travis-ci.com/hasezoey/typegoose-v2)
@@ -41,13 +41,13 @@ class Kitten extends Model {
 
 ## Requirements
 
-* TypeScript 3.2+
-* Node 8+
+* TypeScript 3.6+
+* Node 10+
 * `emitDecoratorMetadata` and `experimentalDecorators` must be enabled in `tsconfig.json`
 
 ## Install
 
-`npm i -s @hasezoey/typegoose-v2`
+`npm i -s @hasezoey/typegoose-v2` (its currently not an npm package)
 
 ## Testing
 
