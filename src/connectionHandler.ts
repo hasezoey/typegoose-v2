@@ -1,9 +1,8 @@
 import { EventEmitter } from "events";
 import { CollectionCreateOptions, Db, MongoClient } from "mongodb";
-import { isNullOrUndefined } from "util";
 import { ConnectionState } from "./constants/connectionState";
 import { connections } from "./internal/data";
-import { promisifyEvent } from "./internal/utils";
+import { isNullOrUndefined, promisifyEvent } from "./internal/utils";
 import { log } from "./logSettings";
 import { ConnectionConfig } from "./types/connectionStateTypes";
 
