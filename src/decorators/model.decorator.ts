@@ -1,7 +1,7 @@
-import { format, isNullOrUndefined } from "util";
+import { format } from "util";
 import { ReflectKeys } from "../constants/reflectKeys";
 import { WrongOptionError } from "../errors/propErrors";
-import { typeCheck } from "../internal/utils";
+import { isNullOrUndefined, typeCheck } from "../internal/utils";
 import { log } from "../logSettings";
 import { ModelDecoratorOptions } from "../types/modelDecoratorTypes";
 

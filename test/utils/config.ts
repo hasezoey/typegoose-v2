@@ -1,7 +1,6 @@
 import * as fs from "fs";
 
 interface IConfig {
-  Memory: boolean;
   DataBase: string;
   Port: number;
   Auth: IAuth;
@@ -26,13 +25,10 @@ const env: NodeJS.ProcessEnv = process.env; // just to write less
 let path: string = env.CONFIG ? env.CONFIG : "./test/config.json";
 path = fs.existsSync(path) ? path : "./test/config_default.json";
 
-const configRAW: Readonly<IConfig> =
-  JSON.parse(fs.readFileSync(path).toString());
+const configRAW: Readonly<IConfig> = JSON.parse(fs.readFileSync(path).toString());
 
 // ENV || CONFIG-FILE || DEFAULT
 const configFINAL: Readonly<IConfig> = {
-  Memory: (env.C_USE_IN_MEMORY === "true" ? true : undefined) ||
-    (typeof configRAW.Memory === "boolean" ? configRAW.Memory : true),
   DataBase: env.C_DATABASE || configRAW.DataBase || "typegooseTest",
   Port: parseInt(env.C_PORT as string, 10) || configRAW.Port || 27017,
   Auth: {
@@ -50,10 +46,8 @@ function cb(text: string): void {
   process.exit(-1);
 }
 
-if (!configFINAL.Memory) {
-  if (!configFINAL.IP) { cb(EConfig.MONGODB_IP); }
-  if (!configFINAL.DataBase) { cb(EConfig.MONGODB_DB); }
-  if (!configFINAL.Port) { cb(EConfig.MONGODB_PORT); }
-}
+if (!configFINAL.IP) { cb(EConfig.MONGODB_IP); }
+if (!configFINAL.DataBase) { cb(EConfig.MONGODB_DB); }
+if (!configFINAL.Port) { cb(EConfig.MONGODB_PORT); }
 
 export { configFINAL as config };

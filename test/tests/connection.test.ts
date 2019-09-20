@@ -18,7 +18,7 @@ export function ConnectionTest() {
     await con.connect();
     expect(await con.createCollection("test")).to.equal(true);
     expect(await con.dropCollection("test")).to.equal(true);
-    expect(await con.dropDatabase(true)).to.equal(true);
+    expect(await con.dropDatabase()).to.equal(true);
     await con.disconnect();
   });
 }

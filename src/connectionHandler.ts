@@ -150,15 +150,10 @@ export class Connection extends EventEmitter {
     }
   }
 
-  public async dropDatabase(noReCreate?: boolean): Promise<boolean> {
+  public async dropDatabase(): Promise<boolean> {
     if (!isNullOrUndefined(this.db)) {
       log.info("dropDatabase called");
       await this.db.dropDatabase();
-
-      if (!noReCreate && this.config.reCreateAfterDrop) {
-        log.info("Recreate after drop");
-        // TODO: recreate after drop, models need to be implemented
-      }
 
       return true;
     } else {

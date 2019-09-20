@@ -7,7 +7,7 @@ export function isNullOrUndefined(value: unknown) {
 }
 
 /**
- * 
+ * Make an Event as an Promise
  * @param func The Event function
  * @param event The Event Name
  * @example

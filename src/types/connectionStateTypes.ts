@@ -11,8 +11,6 @@ export interface ConnectionConfig {
   bufferCommands?: boolean; // idk if this is needed
   connectTimeoutMS?: number;
   socketTimeoutMS?: number;
-  /** Recreate everything after a database drop? (indexes, collections) */
-  reCreateAfterDrop?: boolean;
 }
 
 export interface ConnectionConfigAuth {

@@ -1,5 +1,6 @@
-import { format, isNullOrUndefined } from "util";
+import { format } from "util";
 import { ReflectKeys } from "../constants/reflectKeys";
+import { isNullOrUndefined } from "../internal/utils";
 import { log } from "../logSettings";
 import { PropDecoratorOptions } from "../types/propDecoratorTypes";
 
