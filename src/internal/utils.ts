@@ -6,10 +6,19 @@ export function isNullOrUndefined(value: unknown) {
   return value === null || value === undefined;
 }
 
-export async function promisifyEvent(func: (..._: any) => any, event: string | symbol) {
+/**
+ * 
+ * @param func The Event function
+ * @param event The Event Name
+ * @example
+ * ```ts
+ * await promisifyEvent(this.once, "data");
+ * ```
+ */
+export async function promisifyEvent(func: (..._: any) => any, event: string | symbol): Promise<unknown> {
   return new Promise((res) => {
-    func(event, () => {
-      res();
+    func(event, (...args) => {
+      res(...args);
     });
   });
 }
