@@ -2,8 +2,8 @@
 
 <!-- <sub>(These badges are from hasezoey:master)</sub>  
 [![Build Status](https://travis-ci.com/hasezoey/typegoose-v2.svg?branch=master)](https://travis-ci.com/hasezoey/typegoose-v2)
-[![Coverage Status](https://coveralls.io/repos/github/hasezoey/typegoose-v2/badge.svg?branch=master#feb282019)](https://coveralls.io/github/hasezoey/typegoose-v2?branch=master)
 [![npm](https://img.shields.io/npm/dt/@hasezoey/typegoose-v2-v2.svg)](https://www.npmjs.com/package/@hasezoey/typegoose-v2) -->
+[![Coverage Status](https://coveralls.io/repos/github/hasezoey/typegoose-v2/badge.svg?branch=master)](https://coveralls.io/github/hasezoey/typegoose-v2?branch=master)
 
 Mongoose reinterpreted
 
