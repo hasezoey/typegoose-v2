@@ -3,7 +3,7 @@ import { CollectionCreateOptions, Db, MongoClient } from "mongodb";
 import { ConnectionState } from "./constants/connectionState";
 import { connections } from "./internal/data";
 import { isNullOrUndefined, promisifyEvent } from "./internal/utils";
-import { log } from "./logSettings";
+import { logger } from "./logSettings";
 import { ConnectionConfig } from "./types/connectionStateTypes";
 
 export class Connection extends EventEmitter {
@@ -58,7 +58,7 @@ export class Connection extends EventEmitter {
     this.on("disconnected", () => this._state = ConnectionState.disconnected);
     this.on("error", () => this._state = ConnectionState.error);
 
-    log.info("Created new Connection with %o", config);
+    logger.info("Created new Connection with %o", config);
   }
 
   /**
@@ -67,12 +67,12 @@ export class Connection extends EventEmitter {
   public async connect() {
     // throw new Error("Not Implemented");
     if (this._state !== ConnectionState.disconnected && this._state !== ConnectionState.uninitialized) {
-      log.info("Connnection.connect got called, but state was not \"disconnected\" or \"uninitialized\"");
+      logger.info("Connnection.connect got called, but state was not \"disconnected\" or \"uninitialized\"");
 
       return;
     }
 
-    log.info("calling mongoClient.connect");
+    logger.info("calling mongoClient.connect");
     this._state = ConnectionState.connecting;
     await this.mongoClient.connect().catch((err) => {
       this._state = ConnectionState.error;
@@ -80,23 +80,23 @@ export class Connection extends EventEmitter {
     });
     this.db = this.mongoClient.db();
     this.db.on("close", () => {
-      log.info("mongoClient close fired");
+      logger.info("mongoClient close fired");
       this._state = ConnectionState.disconnected;
       this.emit("disconnected");
     });
     this.db.on("error", (err) => {
-      log.info("mongoClient error fired", err);
+      logger.info("mongoClient error fired", err);
       this._state = ConnectionState.error;
       this.emit("error", err);
     });
     this.db.on("timeout", () => {
-      log.info("mongoClient timeout fired");
+      logger.info("mongoClient timeout fired");
       this.emit("timeout");
     });
 
     this._state = ConnectionState.connected;
     this.emit("connected");
-    log.info("mongoClient.connect connected");
+    logger.info("mongoClient.connect connected");
 
     return;
   }
@@ -117,7 +117,7 @@ export class Connection extends EventEmitter {
 
         return this.disconnect();
       case ConnectionState.connected:
-        log.info("disconnecting");
+        logger.info("disconnecting");
         this._state = ConnectionState.disconnecting;
         this.emit("disconnecting");
 
@@ -127,12 +127,12 @@ export class Connection extends EventEmitter {
 
   public async createCollection(name: string, options?: CollectionCreateOptions): Promise<boolean> {
     if (!isNullOrUndefined(this.db)) {
-      log.info("createCollection called");
+      logger.info("createCollection called");
       const store = await this.db.createCollection(name, options);
 
       return !isNullOrUndefined(store);
     } else {
-      log.warn("createCollection was called, but \"this.db\" was undefined");
+      logger.warn("createCollection was called, but \"this.db\" was undefined");
 
       return false;
     }
@@ -140,11 +140,11 @@ export class Connection extends EventEmitter {
 
   public async dropCollection(name: string): Promise<boolean> {
     if (!isNullOrUndefined(this.db)) {
-      log.info("dropCollection called");
+      logger.info("dropCollection called");
 
       return await this.db.dropCollection(name);
     } else {
-      log.warn("dropCollection was called, but \"this.db\" was undefined");
+      logger.warn("dropCollection was called, but \"this.db\" was undefined");
 
       return false;
     }
@@ -152,12 +152,12 @@ export class Connection extends EventEmitter {
 
   public async dropDatabase(): Promise<boolean> {
     if (!isNullOrUndefined(this.db)) {
-      log.info("dropDatabase called");
+      logger.info("dropDatabase called");
       await this.db.dropDatabase();
 
       return true;
     } else {
-      log.warn("dropDatabase was called, but \"this.db\" was undefined");
+      logger.warn("dropDatabase was called, but \"this.db\" was undefined");
 
       return false;
     }

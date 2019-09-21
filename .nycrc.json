@@ -37,9 +37,13 @@
   "all": true,
   "sourceMap": true,
   "instrument": true,
-  "lines": 40,
-  "statements": 40,
-  "functions": 40,
+  "lines": 0,
+  "statements": 0,
+  "branches": 0,
+  "functions": 0,
+  "_lines": 40,
+  "_statements": 40,
+  "_functions": 40,
   "_comment": "please dont change this to a higher value until https://github.com/gotwarlost/istanbul/issues/35 is fixed",
-  "branches": 20
+  "_branches": 20
 }

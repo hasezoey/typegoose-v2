@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { LogLevels, setLogLevel } from "../../src";
 import { createConnection } from "../../src/connectionHandler";
 import { config } from "../utils/config";
 
@@ -13,7 +12,7 @@ export function ConnectionTest() {
         authSource: config.Auth.DB
       });
     }
-    setLogLevel(LogLevels.TRACE);
+
     const con = createConnection(`mongodb://${config.IP}:${config.Port}/${config.DataBase}`, options);
     await con.connect();
     expect(await con.createCollection("test")).to.equal(true);

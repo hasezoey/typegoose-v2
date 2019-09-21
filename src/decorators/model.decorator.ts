@@ -2,7 +2,7 @@ import { format } from "util";
 import { ReflectKeys } from "../constants/reflectKeys";
 import { WrongOptionError } from "../errors/propErrors";
 import { isNullOrUndefined, typeCheck } from "../internal/utils";
-import { log } from "../logSettings";
+import { logger } from "../logSettings";
 import { ModelDecoratorOptions } from "../types/modelDecoratorTypes";
 
 export function Model(options?: ModelDecoratorOptions) {
@@ -11,7 +11,7 @@ export function Model(options?: ModelDecoratorOptions) {
       throw new TypeError(format("\"@Model\" got called as an non-class Decorator, which isnt supported\n"
         + `Happend on class "%s.%s"`, target, args[0]));
     }
-    log.info("Decorator @Model called for", target);
+    logger.info("Decorator @Model called for", target);
 
     {
       if (typeof options !== "object") {
