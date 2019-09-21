@@ -2,11 +2,11 @@ import { Connection } from "../../src";
 import { config } from "./config";
 
 const options = {
-  useNewUrlParser: true,
+  useNewUrlParser: true
   // useFindAndModify: true,
   // useCreateIndex: true,
-  dbName: config.DataBase,
-  autoIndex: true
+  // dbName: config.DataBase,
+  // autoIndex: true
 };
 if (config.Auth.User.length > 0) {
   Object.assign(options, {
@@ -16,7 +16,7 @@ if (config.Auth.User.length > 0) {
   });
 }
 
-const currentConnection = new Connection(`mongodb://${config.IP}:${config.Port}/`, options);
+const currentConnection = new Connection(`mongodb://${config.IP}:${config.Port}/${config.DataBase}`, options);
 
 /** is it the First time connecting in this test run? */
 let isFirst = true;

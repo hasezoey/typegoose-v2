@@ -65,7 +65,6 @@ export class Connection extends EventEmitter {
    * Connect the Connection
    */
   public async connect() {
-    // throw new Error("Not Implemented");
     if (this._state !== ConnectionState.disconnected && this._state !== ConnectionState.uninitialized) {
       logger.info("Connnection.connect got called, but state was not \"disconnected\" or \"uninitialized\"");
 

@@ -1,7 +1,7 @@
 import { format } from "util";
 import { ReflectKeys } from "../constants/reflectKeys";
 import { WrongTypeError } from "../errors/propErrors";
-import { isNullOrUndefined, assignMetadata } from "../internal/utils";
+import { assignMetadata, isNullOrUndefined } from "../internal/utils";
 import { logger } from "../logSettings";
 import { PropDecoratorOptions } from "../types/propDecoratorTypes";
 
@@ -16,17 +16,17 @@ export function Prop(options?: PropDecoratorOptions) {
     if (isNullOrUndefined(Type)) {
       throw new WrongTypeError(target, key, Type);
     }
+    logger.info("Decorator @Prop called for", target, key);
 
     {
-      const current = Reflect.getMetadata(ReflectKeys.AllProps, target) || new Set();
+      // always creating a new Set, because otherwise with extending a class, would be ALWAYS the same Set
+      const current = new Set(Reflect.getMetadata(ReflectKeys.AllProps, target));
       current.add(key);
       Reflect.defineMetadata(ReflectKeys.AllProps, current, target);
     }
 
     options = typeof options === "object" ? options : {};
 
-    logger.info("Decorator @Prop called for", target, key);
-    logger.info("hi", Reflect.getMetadata(ReflectKeys.Type, target, key));
     if ("default" in options) {
       logger.info("options default");
     }

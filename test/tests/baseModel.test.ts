@@ -35,7 +35,7 @@ export function BasicModelTest() {
     expect(doc.toJSON({ virtuals: true })).to.deep.equal({ hello1: "Hello 1", IDK: 5, _id: undefined });
   });
 
-  it/* .only */("TEST", async () => {
+  it.skip("TEST", async () => {
     setLogLevel(LogLevels.TRACE);
 
     @Model()
