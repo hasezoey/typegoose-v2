@@ -1,6 +1,7 @@
 import { ObjectID } from "bson";
 import { ReflectKeys } from "./constants/reflectKeys";
 import { Prop } from "./decorators/prop.decorator";
+import { validateProp } from "./internal/utils";
 import { logger } from "./logSettings";
 import { ModelToJSONOptions } from "./types/modelTypes";
 
@@ -106,14 +107,30 @@ export abstract class Base<T extends Base<any>> {
     return JSON.stringify(this.toJSON());
   }
 
-  public test() {
-    logger.info("TEST", Object.keys(this.constructor.prototype));
+  /**
+   * Validate the current instance
+   * @param throwing Throw or return boolean ... Default: true
+   */
+  public async validate(throwing?: boolean) {
+    throwing = typeof throwing === "boolean" ? throwing : true;
+    const promiseCollection: Promise<boolean>[] = [];
+    for (const key of Object.keys(this)) {
+      const Type: unknown = Reflect.getMetadata(ReflectKeys.Type, this, key);
+      promiseCollection.push(validateProp(this, key, Type, this[key], true));
+    }
+
+    try {
+      await Promise.all(promiseCollection);
+
+      return true;
+    } catch (err) {
+      if (throwing) {
+        throw err;
+      } else {
+        logger.error(err);
+
+        return false;
+      }
+    }
   }
 }
-
-// export function getModel(cl: any) {
-//   const copy = Object.assign({}, cl);
-//   applyMixins(copy, [Base]);
-
-//   return new copy();
-// }

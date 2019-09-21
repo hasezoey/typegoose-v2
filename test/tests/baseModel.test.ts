@@ -64,6 +64,8 @@ export function BasicModelTest() {
 
     const doc = await Testing.create({ something: "hi", test3: "hi" });
     logger.info("toJSON", doc.toJSON({ virtuals: true }));
-    doc.test();
+    // validateProp(Testing, "something", String, "Hello", false);
+    // validateProp(Testing, "something", String, 0, false);
+    logger.info("return", await doc.validate(false));
   });
 }

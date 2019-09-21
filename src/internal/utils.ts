@@ -1,4 +1,6 @@
 import { ReflectKeys } from "../constants/reflectKeys";
+import { ValidationError } from "../errors/utilErrors";
+import { logger } from "../logSettings";
 
 /**
  * isNullOrUndefined, because deprecated in NodeJS
@@ -99,4 +101,76 @@ export function mergeMetadata(rkey: ReflectKeys, value: unknown, cl: object, key
   }
 
   return Object.assign(current, value);
+}
+
+/**
+ * Run Validation on a Specific Property
+ * @param target The Class the Property is on
+ * @param key The Name of the Property
+ * @param Type The Expected Type
+ * @param value The Current Value
+ * @param throwing Throw or return boolean ... Default: true
+ */
+export async function validateProp(
+  target: object,
+  key: string,
+  Type: any,
+  value: unknown,
+  throwing?: boolean
+): Promise<boolean> {
+  throwing = typeof throwing === "boolean" ? throwing : true;
+  logger.debug("validateProp for %s %s %s (name, key, Type)", getClassName(target), key, Type);
+
+  function end(msg: string) {
+    if (throwing) {
+      throw new ValidationError(target, key, msg);
+    } else {
+      logger.error(`"${getClassName(target)}.${key}"'s validation failed, reason: ${msg}`);
+
+      return false;
+    }
+  }
+
+  const propOptions = Reflect.getMetadata(ReflectKeys.PropOptions, target, key) || {};
+
+  if ("required" in propOptions && typeof propOptions.required === "boolean") {
+    if (propOptions.required && isNullOrUndefined(value)) {
+      return end("Given value is required, but is null or undefined!");
+    }
+
+    if (!propOptions.required && isNullOrUndefined(value)) {
+      // return if the value is not required and is null or undefined
+      return true;
+    }
+  }
+
+  if (Type.name.match(/^(String|Boolean|Number|Object)$/)) {
+    if (typeof value !== Type.name.toLowerCase()) {
+      return end("Given value is not of the proper Type\n"
+        + `expected: ${Type.name} \ngiven: ${value}`);
+    }
+
+    return true;
+  }
+
+  if (!(value instanceof Type)) {
+    return end("Given value is not an instance of Type\n"
+      + `expected: ${Type.name} \ngiven: ${value}`);
+  }
+
+  if ("validate" in propOptions && typeof propOptions.validate === "function") {
+    if (!await propOptions.validate()) {
+      return end("Custom Validation returned false");
+    }
+  }
+
+  return true;
+}
+
+/**
+ * I hope this works
+ * @param cl
+ */
+export function getClassName(cl: any) {
+  return cl.constructor.name === "Function" ? cl.name : cl.constructor.name;
 }

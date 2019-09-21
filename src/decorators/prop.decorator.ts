@@ -1,7 +1,7 @@
 import { format } from "util";
 import { ReflectKeys } from "../constants/reflectKeys";
 import { WrongTypeError } from "../errors/propErrors";
-import { assignMetadata, isNullOrUndefined } from "../internal/utils";
+import { assignMetadata, isNullOrUndefined, validateProp } from "../internal/utils";
 import { logger } from "../logSettings";
 import { PropDecoratorOptions } from "../types/propDecoratorTypes";
 
@@ -27,8 +27,12 @@ export function Prop(options?: PropDecoratorOptions) {
 
     options = typeof options === "object" ? options : {};
 
-    if ("default" in options) {
-      logger.info("options default");
+    if ("r" in options) {
+      options.required = options.r;
+      delete options.r;
+    }
+    if (!("required" in options)) {
+      options.required = false;
     }
 
     assignMetadata(ReflectKeys.PropOptions, options, target, key);
