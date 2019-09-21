@@ -1,3 +1,4 @@
+import { BasicModelTest } from "./tests/baseModel.test";
 import { connect, disconnect } from "./utils/autoConnect";
 
 /**
@@ -7,5 +8,5 @@ export function AutoConnectTests() {
   before(connect);
   after(disconnect);
 
-  // nothing
+  describe("BasicModelTest", BasicModelTest.bind(this));
 }

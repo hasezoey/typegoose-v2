@@ -1,7 +1,8 @@
 import { ObjectID } from "bson";
+import { ReflectKeys } from "./constants/reflectKeys";
 import { Prop } from "./decorators/prop.decorator";
 import { logger } from "./logSettings";
-import { ReflectKeys } from "./constants/reflectKeys";
+import { ModelToJSONOptions } from "./types/modelTypes";
 
 // the 2 types below, are Copy-Pastes from Typescript's docs
 // tslint:disable-next-line:ban-types
@@ -10,16 +11,20 @@ type NonFunctionProperties<T> = Pick<T, NonFunctionPropertyNames<T>>;
 
 type MakeSomeOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
+type CreateOptions<T extends Base<any>> = NonFunctionProperties<MakeSomeOptional<T, "_id">>;
+
 export abstract class Base<T extends Base<any>> {
   @Prop()
   public _id!: ObjectID;
 
-  constructor(value: NonFunctionProperties<MakeSomeOptional<T, "_id">>) {
+  constructor(value: CreateOptions<T>) {
     logger.debug("Constructing %s", this.constructor.name);
+
     const allProps = Reflect.getMetadata(ReflectKeys.AllProps, this) || new Set();
     for (const prop of allProps) {
       logger.debug("Assigning Values to Properties for %s", prop);
       this[prop] = undefined;
+
       const propOptions = Reflect.getMetadata(ReflectKeys.PropOptions, this, prop) || {};
       logger.info("propOptions for %s %o", prop, propOptions);
       if ("default" in propOptions) {
@@ -43,7 +48,7 @@ export abstract class Base<T extends Base<any>> {
    */
   public static async create<T extends Base<any>>(
     this: new (...a: any[]) => T,
-    value: NonFunctionProperties<MakeSomeOptional<T, "_id">>
+    value: CreateOptions<T>
   ) {
     const doc = new this(value);
     await doc.save();
@@ -58,8 +63,29 @@ export abstract class Base<T extends Base<any>> {
   /**
    * Convert the Document to an Object / JSON
    */
-  public toJSON(): object {
-    return Object.assign({}, this);
+  public toJSON(options?: ModelToJSONOptions): object {
+    logger.debug("toJSON called for %s", this.constructor.name);
+    options = typeof options === "object" ? options : {};
+
+    const theObject = Object.assign({}, this);
+
+    /** Shorthand for "this.constructor.prototype" */
+    const proto = this.constructor.prototype;
+    for (const key of Object.getOwnPropertyNames(proto)) {
+      // return if the key is included in the following regex, because these types are not needed
+      if (key.match(/^(constructor)$/)) {
+        continue;
+      }
+
+      const descriptor = Object.getOwnPropertyDescriptor(proto, key);
+      if (options.virtuals) {
+        if (typeof descriptor.get === "function") {
+          theObject[key] = descriptor.get();
+        }
+      }
+    }
+
+    return theObject;
   }
 
   /**
