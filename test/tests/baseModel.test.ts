@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import { LogLevels, setLogLevel } from "../../src";
+import { Base } from "../../src/baseModel";
 import { Model } from "../../src/decorators/model.decorator";
 import { Prop } from "../../src/decorators/prop.decorator";
 import { logger } from "../../src/logSettings";
-import { Base } from "../../src/model";
 
 export function BasicModelTest() {
   it("should output the right to JSON for normal classes", () => {
@@ -13,6 +13,10 @@ export function BasicModelTest() {
 
       @Prop()
       public hello2!: number;
+
+      public get thisShouldNotBeIncluded() {
+        return 5;
+      }
     }
 
     const doc = new BasicModelBasicJSON({ hello1: "Hello 1", hello2: 2 });

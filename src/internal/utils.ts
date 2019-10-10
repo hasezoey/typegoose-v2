@@ -119,7 +119,7 @@ export async function validateProp(
   throwing?: boolean
 ): Promise<boolean> {
   throwing = typeof throwing === "boolean" ? throwing : true;
-  logger.debug("validateProp for %s %s %s (name, key, Type)", getClassName(target), key, Type);
+  logger.debug("validateProp for %s %s %s (name, key, Type)", getClassName(target), key, getClassName(Type));
 
   function end(msg: string) {
     if (throwing) {

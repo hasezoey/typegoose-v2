@@ -12,7 +12,7 @@ import { ModelToJSONOptions } from "./types/modelTypes";
 type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
 type NonFunctionProperties<T> = Pick<T, NonFunctionPropertyNames<T>>;
 
-type MakeSomeOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+export type MakeSomeOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 // the following 3 types are CP from https://stackoverflow.com/a/52473108/8944059
 type IfEquals<X, Y, A, B> =
@@ -24,7 +24,7 @@ type WritableKeysOf<T> = {
 }[keyof T];
 type WritablePart<T> = Pick<T, WritableKeysOf<T>>;
 
-type CreateOptions<T extends Base<any>> = WritablePart<NonFunctionProperties<MakeSomeOptional<T, "_id">>>;
+export type CreateOptions<T extends Base<any>> = WritablePart<NonFunctionProperties<MakeSomeOptional<T, "_id">>>;
 
 export abstract class Base<T extends Base<any>> {
   @Prop()
