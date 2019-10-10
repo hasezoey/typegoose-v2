@@ -34,12 +34,12 @@
     "@types/chai": "^4.2.3",
     "@types/chai-as-promised": "^7.1.2",
     "@types/mocha": "^5.2.7",
-    "@types/mongodb": "^3.3.1",
-    "@types/node": "^12.7.5",
+    "@types/mongodb": "^3.3.6",
+    "@types/node": "^12.7.12",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "coveralls": "^3.0.6",
-    "mocha": "^6.2.0",
+    "mocha": "^6.2.1",
     "nyc": "^14.1.1",
     "rimraf": "3.0.0",
     "source-map-support": "^0.5.13",
@@ -47,14 +47,14 @@
     "tslint": "5.20.0",
     "tslint-eslint-rules": "*5.4.0",
     "typedoc": "*0.15.0",
-    "typescript": "3.6.3"
+    "typescript": "3.6.4"
   },
   "dependencies": {
     "bson": "^4.0.2",
     "loglevel": "^1.6.4",
     "mongodb": "^3.3.2",
     "mongodb-core": "^3.2.7",
-    "object.fromentries": "^2.0.0",
+    "object.fromentries": "^2.0.1",
     "reflect-metadata": "^0.1.13"
   }
 }
