@@ -1,11 +1,8 @@
-import { expect } from "chai";
-import { LogLevels, setLogLevel } from "../../src";
-import { Base } from "../../src/baseModel";
-import { Model } from "../../src/decorators/model.decorator";
-import { Prop } from "../../src/decorators/prop.decorator";
-import { logger } from "../../src/logSettings";
+import { Base, Connection, LogLevels, Model, Prop, setLogLevel } from "../src";
+import { logger } from "../src/logSettings";
+import { config } from "./utils/config";
 
-export function BasicModelTest() {
+describe("BasicModelTest", () => {
   it("should output the right to JSON for normal classes", () => {
     class BasicModelBasicJSON extends Base<BasicModelBasicJSON> {
       @Prop()
@@ -21,7 +18,7 @@ export function BasicModelTest() {
 
     const doc = new BasicModelBasicJSON({ hello1: "Hello 1", hello2: 2 });
 
-    expect(doc.toJSON()).to.deep.equal({ hello1: "Hello 1", hello2: 2, _id: undefined });
+    expect(doc.serialize()).toStrictEqual({ hello1: "Hello 1", hello2: 2, _id: null });
   });
 
   it("should output the right to JSON with getter classes", () => {
@@ -36,13 +33,18 @@ export function BasicModelTest() {
 
     const doc = new BasicModelGettersJSON({ hello1: "Hello 1" });
 
-    expect(doc.toJSON({ virtuals: true })).to.deep.equal({ hello1: "Hello 1", IDK: 5, _id: undefined });
+    expect(doc.serialize(true)).toStrictEqual({ hello1: "Hello 1", IDK: 5, _id: null });
   });
 
-  it.skip("TEST", async () => {
+  it("testy", async () => {
     setLogLevel(LogLevels.TRACE);
 
-    @Model()
+    const con = new Connection(`mongodb://${config.IP}:${config.Port}/${config.DataBase}`);
+    await con.connect();
+
+    @Model({
+      connection: con
+    })
     class Testing extends Base<Testing> {
       @Prop()
       public something: string;
@@ -66,10 +68,13 @@ export function BasicModelTest() {
       }
     }
 
-    const doc = await Testing.create({ something: "hi", test3: "hi" });
-    logger.info("toJSON", doc.toJSON({ virtuals: true }));
+    // const doc = await Testing.create({ something: "hi", test3: "hi" });
+    const doc = new Testing({ something: "hi", test3: "hi" });
+    logger.info("serialize", doc.serialize(true));
     // validateProp(Testing, "something", String, "Hello", false);
     // validateProp(Testing, "something", String, 0, false);
     logger.info("return", await doc.validate(false));
-  });
-}
+
+    await doc.save();
+  }, 10000);
+});

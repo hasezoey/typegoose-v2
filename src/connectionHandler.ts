@@ -1,55 +1,50 @@
 import { EventEmitter } from "events";
+import { merge } from "lodash";
 import { CollectionCreateOptions, Db, MongoClient } from "mongodb";
 import { ConnectionState } from "./constants/connectionState";
+import { GenericError } from "./errors/genericError";
 import { connections } from "./internal/data";
-import { isNullOrUndefined, promisifyEvent } from "./internal/utils";
+import { assert, isNullOrUndefined, promisifyEvent } from "./internal/utils";
 import { logger } from "./logSettings";
 import { ConnectionConfig } from "./types/connectionStateTypes";
 
 export class Connection extends EventEmitter {
+  private _config: ConnectionConfig = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  };
+
   public connectionState: ConnectionState;
-  public readonly config: ConnectionConfig;
+  public readonly mongoClient: MongoClient;
 
   private _state: ConnectionState = ConnectionState.uninitialized;
-  private mongoClient: MongoClient;
   private db?: Db;
+
+  public get config() {
+    return this._config;
+  }
+  public set config(i) {
+    assert(
+      this._state === ConnectionState.disconnected
+      || this._state === ConnectionState.uninitialized,
+      new GenericError("Cannot set Config after already connecting!")
+    );
+    merge(this._config, i);
+  }
 
   public get state() {
     return this._state;
   }
 
-  // public models: any[]; // TODO: change this when models are implemented
-
   constructor(uri: string, config?: ConnectionConfig) {
     super();
-    if (typeof config !== "object") {
-      config = {};
-    }
-    if (typeof uri !== "string") {
-      throw new Error(`URI must be a string, got "${typeof uri}"`); // TODO: change this to a custom error
-    }
+
+    this.config = typeof config === "object" ? config : {};
+    assert(typeof uri === "string", new GenericError("URI must be a string, got \"%s\""));
 
     // The Block below is for config & its validation
     {
-      const defaultConfig: ConnectionConfig = {
-        useNewUrlParser: true,
-        reconnectTries: 30,
-        reconnectInterval: 1000,
-        poolSize: 5,
-        connectTimeoutMS: 30000,
-        socketTimeoutMS: 30000,
-        reCreateAfterDrop: true,
-        useUnifiedTopology: true
-      };
-      this.config = Object.assign(defaultConfig, config); // rely on Typescript's definitions
       const mongoOptions = Object.assign({}, this.config);
-
-      if (!isNullOrUndefined(mongoOptions.bufferCommands)) {
-        delete mongoOptions.bufferCommands;
-      }
-      if (!isNullOrUndefined(mongoOptions.reCreateAfterDrop)) {
-        delete mongoOptions.reCreateAfterDrop;
-      }
 
       this.mongoClient = new MongoClient(uri, mongoOptions);
     }
@@ -65,11 +60,10 @@ export class Connection extends EventEmitter {
    * Connect the Connection
    */
   public async connect() {
-    if (this._state !== ConnectionState.disconnected && this._state !== ConnectionState.uninitialized) {
-      logger.info("Connnection.connect got called, but state was not \"disconnected\" or \"uninitialized\"");
-
-      return;
-    }
+    assert(
+      this._state === ConnectionState.uninitialized || this._state === ConnectionState.disconnected,
+      new GenericError("\"%s\" is not a valid state for connecting!", this._state)
+    );
 
     logger.info("calling mongoClient.connect");
     this._state = ConnectionState.connecting;

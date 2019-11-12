@@ -1,3 +1,4 @@
+import * as assertN from "assert";
 import { ReflectKeys } from "../constants/reflectKeys";
 import { ValidationError } from "../errors/utilErrors";
 import { logger } from "../logSettings";
@@ -173,4 +174,39 @@ export async function validateProp(
  */
 export function getClassName(cl: any) {
   return cl.constructor.name === "Function" ? cl.name : cl.constructor.name;
+}
+
+/**
+ * Proxy for assert (typescript)
+ * @param cond
+ * @param msg
+ */
+export function assert(cond: any, msg?: string | Error): asserts cond {
+  assertN(cond, msg);
+}
+
+/**
+ * Get all Getters from given OBJ
+ * @param obj Where all getters come from
+ */
+export function getAllGetters(obj: object): string[] {
+  /** Current Prototype to check */
+  let proto = Object.getPrototypeOf(obj);
+  /** Keys to for getters */
+  let keys: string[] = [];
+
+  // get all getters
+  while (!isNullOrUndefined(proto)) {
+    keys = keys.concat(
+      Object.entries(Object.getOwnPropertyDescriptors(proto))
+        .filter(([key, v]) =>
+          !isNullOrUndefined(v.get)
+          && key[0] !== "_"
+        )
+        .map(([k, v]) => k)
+    );
+    proto = Object.getPrototypeOf(proto);
+  }
+
+  return keys;
 }

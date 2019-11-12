@@ -1,14 +1,14 @@
 import { format } from "util";
 import { ReflectKeys } from "../constants/reflectKeys";
 import { WrongTypeError } from "../errors/propErrors";
-import { assignMetadata, isNullOrUndefined, validateProp } from "../internal/utils";
+import { assert, assignMetadata, isNullOrUndefined } from "../internal/utils";
 import { logger } from "../logSettings";
 import { PropDecoratorOptions } from "../types/propDecoratorTypes";
 
 export function Prop(options?: PropDecoratorOptions) {
   return (target: object, ...args: any[]) => {
     if (isNullOrUndefined(args) || (Array.isArray(args) && args.length <= 0)) {
-      throw new TypeError(format("\"@Prop\" got called as an class Decorator, which isnt supported\n"
+      throw new TypeError(format("\"@Prop\" got called as an class Decorator OR Type is null | undefined, which isnt supported\n"
         + `Happend on class %o`, target));
     }
     const key: string = args[0];

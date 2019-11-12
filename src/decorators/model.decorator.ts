@@ -1,23 +1,21 @@
 import { format } from "util";
 import { ReflectKeys } from "../constants/reflectKeys";
+import { GenericError } from "../errors/genericError";
 import { WrongOptionError } from "../errors/propErrors";
-import { isNullOrUndefined, typeCheck } from "../internal/utils";
+import { assert, isNullOrUndefined, typeCheck } from "../internal/utils";
 import { logger } from "../logSettings";
 import { ModelDecoratorOptions } from "../types/modelDecoratorTypes";
 
-export function Model(options?: ModelDecoratorOptions) {
+export function Model(options: ModelDecoratorOptions) {
   return (target: any, ...args: any[]) => {
     if (Array.isArray(args) && args.length > 0) {
       throw new TypeError(format("\"@Model\" got called as an non-class Decorator, which isnt supported\n"
         + `Happend on class "%s.%s"`, target, args[0]));
     }
     logger.info("Decorator @Model called for", target);
+    assert(typeof options === "object", new GenericError("Expected Options to be an object!"));
 
     {
-      if (typeof options !== "object") {
-        options = {};
-      }
-
       if (typeCheck(options.autoIndex, "boolean")) {
         throw new WrongOptionError("Model.autoIndex", "boolean", typeof options.autoIndex);
       }
@@ -26,9 +24,6 @@ export function Model(options?: ModelDecoratorOptions) {
       }
       if (typeCheck(options.capped, "number")) {
         throw new WrongOptionError("Model.capped", "number", typeof options.capped);
-      }
-      if (typeCheck(options.bufferCommands, "boolean")) {
-        throw new WrongOptionError("Model.bufferCommands", "boolean", typeof options.bufferCommands);
       }
       if (typeCheck(options.autoCreate, "boolean")) {
         throw new WrongOptionError("Model.autoCreate", "boolean", typeof options.autoCreate);

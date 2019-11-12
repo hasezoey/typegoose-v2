@@ -1,8 +1,7 @@
-import { expect } from "chai";
-import { createConnection } from "../../src/connectionHandler";
-import { config } from "../utils/config";
+import { createConnection } from "../src/connectionHandler";
+import { config } from "./utils/config";
 
-export function ConnectionTest() {
+describe("ConnectionTest", () => {
   it("should normally connect and disconnect", async () => {
     const options = {};
     if (config.Auth.User.length > 0) {
@@ -15,9 +14,9 @@ export function ConnectionTest() {
 
     const con = createConnection(`mongodb://${config.IP}:${config.Port}/${config.DataBase}`, options);
     await con.connect();
-    expect(await con.createCollection("test")).to.equal(true);
-    expect(await con.dropCollection("test")).to.equal(true);
-    expect(await con.dropDatabase()).to.equal(true);
+    expect(await con.createCollection("test")).toBeTrue();
+    expect(await con.dropCollection("test")).toBeTrue();
+    expect(await con.dropDatabase()).toBeTrue();
     await con.disconnect();
   });
-}
+});

@@ -1,9 +1,13 @@
-import { ObjectID } from "bson";
+import { EJSON, ObjectID } from "bson";
+import { Collection } from "mongodb";
+import { Connection } from "./connectionHandler";
 import { ReflectKeys } from "./constants/reflectKeys";
 import { Prop } from "./decorators/prop.decorator";
-import { validateProp } from "./internal/utils";
+import { GenericError } from "./errors/genericError";
+import { getGlobalOptions } from "./globalOptions";
+import { assert, getAllGetters, isNullOrUndefined, validateProp } from "./internal/utils";
 import { logger } from "./logSettings";
-import { ModelToJSONOptions } from "./types/modelTypes";
+import { ModelDecoratorOptions } from "./types/modelDecoratorTypes";
 
 // Please dont try to touch the following types, it will just break everything
 
@@ -55,6 +59,64 @@ export abstract class Base<T extends Base<any>> {
   }
 
   /**
+   * Check for an Connection & return it
+   */
+  protected getConnection(): Connection | never {
+    const con: Connection | undefined = this.getModelOptions().connection;
+    assert(con instanceof Connection, new GenericError("Expected to have an Connection assigned!"));
+
+    return con;
+  }
+
+  /**
+   * Get Model Options (or empty object)
+   */
+  protected getModelOptions(): ModelDecoratorOptions {
+    const ref = Reflect.getMetadata(ReflectKeys.PropOptions, this.constructor) ?? {};
+
+    return ref;
+  }
+
+  /**
+   * Returns the class name
+   * QoL method
+   */
+  protected getName(): string {
+    return this.constructor.name;
+  }
+
+  /**
+   * Check if the collection exists
+   */
+  protected async createCollection(): Promise<Collection> {
+    const con = this.getConnection();
+    try {
+      return con.mongoClient.db().collection(this.getCollectionName(), { strict: true });
+    } catch (err) {
+      const coll = con.mongoClient.db().collection(this.getCollectionName());
+      // apply indexes
+
+      return coll;
+    }
+  }
+
+  /**
+   * Get the Collection name
+   */
+  public getCollectionName(): string {
+    const collection: string | undefined = this.getModelOptions().collection;
+
+    const glob = getGlobalOptions();
+    if (isNullOrUndefined(collection)) {
+      assert(glob.allowClassNameAsCollection, new GenericError("Collection is undefined and \"allowClassNameAsCollection\" is false! Model: %s", this.getName()));
+
+      return this.getName();
+    }
+
+    return collection;
+  }
+
+  /**
    * Create an Document and save it
    * @param value
    */
@@ -68,51 +130,43 @@ export abstract class Base<T extends Base<any>> {
     return doc;
   }
 
-  public async save() {
-    return;
-  }
-
   /**
-   * Convert the Document to an Object / JSON
+   * Saves the Document
    */
-  public toJSON(options?: ModelToJSONOptions): object {
-    logger.debug("toJSON called for %s", this.constructor.name);
-    options = typeof options === "object" ? options : {};
+  public async save() {
+    await this.createCollection();
+    const coll = await this.createCollection();
+    await coll.insertOne(this.serialize());
 
-    const theObject = Object.assign({}, this);
-
-    /** Shorthand for "this.constructor.prototype" */
-    const proto = this.constructor.prototype;
-    for (const key of Object.getOwnPropertyNames(proto)) {
-      // return if the key is included in the following regex, because these types are not needed
-      if (key.match(/^(constructor)$/)) {
-        continue;
-      }
-
-      const descriptor = Object.getOwnPropertyDescriptor(proto, key);
-      if (options.virtuals) {
-        if (typeof descriptor.get === "function") {
-          theObject[key] = descriptor.get();
-        }
-      }
-    }
-
-    return theObject;
+    return;
   }
 
   /**
    * As toJSON only that it returns it stringifyed
    */
   public toString(): string {
-    return JSON.stringify(this.toJSON());
+    return JSON.stringify(this.serialize());
+  }
+
+  public serialize(getters?: boolean): object {
+    const copy: any = Object.assign({}, this);
+
+    if (getters) {
+      const keys = getAllGetters(this);
+      keys.forEach((key) => {
+        copy[key] = (this as any)[key];
+      });
+    }
+
+    return EJSON.serialize(copy);
   }
 
   /**
    * Validate the current instance
    * @param throwing Throw or return boolean ... Default: true
    */
-  public async validate(throwing?: boolean) {
-    throwing = typeof throwing === "boolean" ? throwing : true;
+  public async validate(throwing?: boolean): Promise<boolean | never> {
+    throwing = throwing ?? true;
     const promiseCollection: Promise<boolean>[] = [];
     for (const key of Object.keys(this)) {
       const Type: unknown = Reflect.getMetadata(ReflectKeys.Type, this, key);

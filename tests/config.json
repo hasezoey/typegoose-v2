@@ -1,0 +1,11 @@
+{
+  "Memory": false,
+  "DataBase": "typegoose-v2-test",
+  "Port": 27017,
+  "Auth": {
+    "DB": "",
+    "User": "",
+    "Passwd": ""
+  },
+  "IP": "localhost"
+}

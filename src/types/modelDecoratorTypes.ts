@@ -1,14 +1,14 @@
+import { Connection } from "../connectionHandler";
+
 // tslint:disable:max-line-length
 export interface ModelDecoratorOptions {
   autoIndex?: boolean;
   collection?: string;
   capped?: number;
-  bufferCommands?: boolean;
   autoCreate?: boolean;
   writeConcern?: ModelDecoratorOptionsWriteConcern;
-  toJSON?(t: any): object;
-  toObject?(t: any): object;
   keys?: ModelDecoratorOptionsKeys;
+  connection?: Connection;
 }
 
 export interface ModelDecoratorOptionsKeys {

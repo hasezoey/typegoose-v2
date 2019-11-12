@@ -15,10 +15,14 @@
     "outDir": "build",
     "inlineSourceMap": true,
     "incremental": true,
-    "tsBuildInfoFile": "./.tsbuildinfo"
+    "tsBuildInfoFile": "./.tsbuildinfo",
+    "strict": false,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "importHelpers": true
   },
   "include": [
     "src/**/*.ts",
-    "test/**/*.ts"
+    "tests/**/*.ts"
   ]
 }

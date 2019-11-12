@@ -1,30 +1,28 @@
-import { assert, expect } from "chai";
-import { Model } from "../../src/decorators/model.decorator";
-import { Prop } from "../../src/decorators/prop.decorator";
-import { WrongOptionError, WrongTypeError } from "../../src/errors/propErrors";
-
+import { fail } from "assert";
+import { Model, Prop } from "../src";
+import { WrongOptionError, WrongTypeError } from "../src/errors/propErrors";
 // tslint:disable:no-unused-variable
 
-export function ErrorTests() {
+describe("ErrorTests", () => {
   it("should throw an TypeError when @Prop is tried to be used as a class decorator", () => {
     try {
       @Prop()
       class ErrorPropAsModel { }
-      assert.fail("expected to throw an Error!");
+      fail("expected to throw an Error!");
     } catch (err) {
-      expect(err).to.be.an.instanceOf(TypeError);
+      expect(err).toBeInstanceOf(TypeError);
     }
   });
 
   it("should throw an TypeError when @Model is tried to be used as a non-class decorator", () => {
     try {
       class ErrorModelAsProp {
-        @Model()
+        @Model({})
         public t;
       }
-      assert.fail("expected to throw an Error!");
+      fail("expected to throw an Error!");
     } catch (err) {
-      expect(err).to.be.an.instanceOf(TypeError);
+      expect(err).toBeInstanceOf(TypeError);
     }
   });
 
@@ -33,9 +31,9 @@ export function ErrorTests() {
       // @ts-ignore
       @Model({ autoIndex: "notOK" })
       class ErrorWrongModelOption { }
-      assert.fail("expected to throw an WrongOptionError!");
+      fail("expected to throw an WrongOptionError!");
     } catch (err) {
-      expect(err).to.be.an.instanceOf(WrongOptionError);
+      expect(err).toBeInstanceOf(WrongOptionError);
     }
   });
 
@@ -46,9 +44,9 @@ export function ErrorTests() {
         @Prop()
         public t: null;
       }
-      assert.fail("expected to throw an WrongTypeError!");
+      fail("expected to throw an WrongTypeError!");
     } catch (err) {
-      expect(err).to.be.an.instanceOf(WrongTypeError);
+      expect(err).toBeInstanceOf(WrongTypeError);
     }
 
     // Test for UNDEFINED
@@ -57,9 +55,9 @@ export function ErrorTests() {
         @Prop()
         public t: undefined;
       }
-      assert.fail("expected to throw an WrongTypeError!");
+      fail("expected to throw an WrongTypeError!");
     } catch (err) {
-      expect(err).to.be.an.instanceOf(WrongTypeError);
+      expect(err).toBeInstanceOf(WrongTypeError);
     }
   });
-}
+});
