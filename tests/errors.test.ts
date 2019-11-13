@@ -1,4 +1,3 @@
-import { fail } from "assert";
 import { Model, Prop } from "../src";
 import { WrongOptionError, WrongTypeError } from "../src/errors/propErrors";
 // tslint:disable:no-unused-variable

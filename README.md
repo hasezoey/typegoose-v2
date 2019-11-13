@@ -1,23 +1,23 @@
 # Typegoose-v2 (Working Title)
 
-<!-- <sub>(These badges are from hasezoey:master)</sub>  
+ <sub>(These badges are from hasezoey:master)</sub>  
 [![Build Status](https://travis-ci.com/hasezoey/typegoose-v2.svg?branch=master)](https://travis-ci.com/hasezoey/typegoose-v2)
-[![npm](https://img.shields.io/npm/dt/@hasezoey/typegoose-v2-v2.svg)](https://www.npmjs.com/package/@hasezoey/typegoose-v2) -->
+<!--[![npm](https://img.shields.io/npm/dt/@hasezoey/typegoose-v2-v2.svg)](https://www.npmjs.com/package/@hasezoey/typegoose-v2) -->
 [![Coverage Status](https://coveralls.io/repos/github/hasezoey/typegoose-v2/badge.svg?branch=master)](https://coveralls.io/github/hasezoey/typegoose-v2?branch=master)
 
 Mongoose reinterpreted
 
-Please know that this is not an finished product, at all
-and please know that i can abandon this at any time
+**Please know that this is not an finished product
+and please know that i can abandon this at any time**
 
 ## Basic usage
 
 ```ts
 // this example is not working, it is just to show how this package should work when finished
-import { ModelOptions, Prop, Connection, Model } from '@hasezoey/typegoose-v2';
+import { ModelOptions, Prop, Connection, Model, changeOptions } from '@hasezoey/typegoose-v2';
 import * as mongoose from 'mongoose';
 
-@ModelOptions() // default options
+@ModelOptions({}) // default options
 class Kitten extends Model {
   @Prop({ required: true })
   public name: string;
@@ -29,7 +29,11 @@ class Kitten extends Model {
 // const NewKitten = changeOptions(Kitten, {options});
 
 (async () => {
-  const connection = new Connection('mongodb://localhost:27017/test');
+  const connection = createConnection('mongodb://localhost:27017/test');
+  // or the un-managed version
+  const connection = new Connection('mongodb://localhost:27017/test')
+
+  changeOptions({ connection: connection }, Kitten);
 
   const { _id: id } = await UserModel.create({ name: 'Kitty' });
   const kittys = await UserModel.findById(id).exec();

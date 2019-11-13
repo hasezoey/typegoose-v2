@@ -1,5 +1,5 @@
 import { Contains } from "class-validator";
-import { Base, Connection, LogLevels, Model, Prop, setLogLevel } from "../src";
+import { Base, changeOptions, Connection, LogLevels, Model, Prop, setLogLevel } from "../src";
 import { logger } from "../src/logSettings";
 import { config } from "./utils/config";
 
@@ -65,7 +65,7 @@ describe("BasicModelTest", () => {
     await con.connect();
 
     @Model({
-      connection: con
+      // connection: con
     })
     class Testing extends Base<Testing> {
       @Prop()
@@ -89,6 +89,8 @@ describe("BasicModelTest", () => {
         "";
       }
     }
+
+    changeOptions({ connection: con }, Testing);
 
     // const doc = await Testing.create({ something: "hi", test3: "hi" });
     const doc = new Testing({ something: "hi", test3: "hi" });

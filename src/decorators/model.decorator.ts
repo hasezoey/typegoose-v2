@@ -1,4 +1,5 @@
 import { format } from "util";
+import { Base } from "../baseModel";
 import { ReflectKeys } from "../constants/reflectKeys";
 import { GenericError } from "../errors/genericError";
 import { WrongOptionError } from "../errors/propErrors";
@@ -70,4 +71,13 @@ export function Model(options: ModelDecoratorOptions) {
 
     Reflect.defineMetadata(ReflectKeys.PropOptions, options, target);
   };
+}
+
+/**
+ * Change Given class's Model-Option
+ * @param options The Options to change
+ * @param target The Target Class
+ */
+export function changeOptions<T extends new (...a: any) => Base<any>>(options: ModelDecoratorOptions, target: T) {
+  Model(options)(target);
 }
