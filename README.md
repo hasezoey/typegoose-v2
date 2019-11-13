@@ -7,8 +7,7 @@
 
 Mongoose reinterpreted
 
-**Please know that this is not an finished product
-and please know that i can abandon this at any time**
+**Please know that this is not an finished product and please know that i can abandon this at any time**
 
 ## Basic usage
 
@@ -45,9 +44,10 @@ class Kitten extends Model {
 
 ## Requirements
 
-* TypeScript 3.6+
-* Node 10+
+* TypeScript 3.7+
+* Node 12+
 * `emitDecoratorMetadata` and `experimentalDecorators` must be enabled in `tsconfig.json`
+* `class-validator` is a required peer-dependencie
 
 ## Install
 
@@ -66,9 +66,13 @@ class Kitten extends Model {
 
 To ask questions or just talk with us [join our Discord Server](https://discord.gg/BpGjTTD)
 
+## Integration
+
+This Project should work with `class-transformer` & `class-validator`
+
 ## Additonal Infos
 
-Please know that this is a side project, that tries to reinterpret mongoose into typescript (extended typegoose)
-and please know that this project should not be considered stable
+Please know that this is a side project, that tries to reinterpret mongoose into typescript (extended typegoose)  
+And please know that this project should not be considered stable  
 
 This Project (typegoose-v2) is not compatible with mongoose or typegoose
