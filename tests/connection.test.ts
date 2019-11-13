@@ -12,7 +12,7 @@ describe("ConnectionTest", () => {
       });
     }
 
-    const con = createConnection(`mongodb://${config.IP}:${config.Port}/${config.DataBase}`, options);
+    const con = createConnection(`mongodb://${config.IP}:${config.Port}/${config.DataBase + "1"}`, options);
     await con.connect();
     expect(await con.createCollection("test")).toBeTrue();
     expect(await con.dropCollection("test")).toBeTrue();
