@@ -7,14 +7,14 @@ import { IGlobalOptions } from "./types/globalOptionTypes";
  * @param options Global Options to set
  */
 export function setGlobalOptions(options: IGlobalOptions): IGlobalOptions {
-  merge(globalOptions, options);
+	merge(globalOptions, options);
 
-  return globalOptions;
+	return globalOptions;
 }
 
 /**
  * Get current global options
  */
 export function getGlobalOptions(): IGlobalOptions {
-  return globalOptions;
+	return globalOptions;
 }

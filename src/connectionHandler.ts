@@ -9,152 +9,151 @@ import { logger } from "./logSettings";
 import { ConnectionConfig } from "./types/connectionStateTypes";
 
 export class Connection extends EventEmitter {
-  private _config: ConnectionConfig = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  };
+	public get config(): ConnectionConfig {
+		return this._config;
+	}
+	public set config(i) {
+		assert(
+			this._state === ConnectionState.disconnected
+			|| this._state === ConnectionState.uninitialized,
+			new GenericError("Cannot set Config after already connecting!")
+		);
+		merge(this._config, i);
+	}
 
-  public connectionState: ConnectionState;
-  public readonly mongoClient: MongoClient;
+	public get state(): ConnectionState {
+		return this._state;
+	}
 
-  private _state: ConnectionState = ConnectionState.uninitialized;
-  private db?: Db;
+	public connectionState: ConnectionState;
+	public readonly mongoClient: MongoClient;
+	private _config: ConnectionConfig = {
+		useNewUrlParser: true,
+		useUnifiedTopology: true
+	};
 
-  public get config() {
-    return this._config;
-  }
-  public set config(i) {
-    assert(
-      this._state === ConnectionState.disconnected
-      || this._state === ConnectionState.uninitialized,
-      new GenericError("Cannot set Config after already connecting!")
-    );
-    merge(this._config, i);
-  }
+	private _state: ConnectionState = ConnectionState.uninitialized;
+	private db?: Db;
 
-  public get state() {
-    return this._state;
-  }
+	constructor(uri: string, config?: ConnectionConfig) {
+		super();
 
-  constructor(uri: string, config?: ConnectionConfig) {
-    super();
+		this.config = typeof config === "object" ? config : {};
+		assert(typeof uri === "string", new GenericError("URI must be a string, got \"%s\""));
 
-    this.config = typeof config === "object" ? config : {};
-    assert(typeof uri === "string", new GenericError("URI must be a string, got \"%s\""));
+		// The Block below is for config & its validation
+		{
+			const mongoOptions = Object.assign({}, this.config);
 
-    // The Block below is for config & its validation
-    {
-      const mongoOptions = Object.assign({}, this.config);
+			this.mongoClient = new MongoClient(uri, mongoOptions);
+		}
 
-      this.mongoClient = new MongoClient(uri, mongoOptions);
-    }
+		this.on("connected", () => this._state = ConnectionState.connected);
+		this.on("disconnected", () => this._state = ConnectionState.disconnected);
+		this.on("error", () => this._state = ConnectionState.error);
 
-    this.on("connected", () => this._state = ConnectionState.connected);
-    this.on("disconnected", () => this._state = ConnectionState.disconnected);
-    this.on("error", () => this._state = ConnectionState.error);
+		logger.info("Created new Connection with %o", config);
+	}
 
-    logger.info("Created new Connection with %o", config);
-  }
+	/**
+	 * Connect the Connection
+	 */
+	public async connect() {
+		assert(
+			this._state === ConnectionState.uninitialized || this._state === ConnectionState.disconnected,
+			new GenericError("\"%s\" is not a valid state for connecting!", this._state)
+		);
 
-  /**
-   * Connect the Connection
-   */
-  public async connect() {
-    assert(
-      this._state === ConnectionState.uninitialized || this._state === ConnectionState.disconnected,
-      new GenericError("\"%s\" is not a valid state for connecting!", this._state)
-    );
+		logger.info("calling mongoClient.connect");
+		this._state = ConnectionState.connecting;
+		await this.mongoClient.connect().catch((err) => {
+			this._state = ConnectionState.error;
+			throw err;
+		});
+		this.db = this.mongoClient.db();
+		this.db.on("close", () => {
+			logger.info("mongoClient close fired");
+			this._state = ConnectionState.disconnected;
+			this.emit("disconnected");
+		});
+		this.db.on("error", (err) => {
+			logger.info("mongoClient error fired", err);
+			this._state = ConnectionState.error;
+			this.emit("error", err);
+		});
+		this.db.on("timeout", () => {
+			logger.info("mongoClient timeout fired");
+			this.emit("timeout");
+		});
 
-    logger.info("calling mongoClient.connect");
-    this._state = ConnectionState.connecting;
-    await this.mongoClient.connect().catch((err) => {
-      this._state = ConnectionState.error;
-      throw err;
-    });
-    this.db = this.mongoClient.db();
-    this.db.on("close", () => {
-      logger.info("mongoClient close fired");
-      this._state = ConnectionState.disconnected;
-      this.emit("disconnected");
-    });
-    this.db.on("error", (err) => {
-      logger.info("mongoClient error fired", err);
-      this._state = ConnectionState.error;
-      this.emit("error", err);
-    });
-    this.db.on("timeout", () => {
-      logger.info("mongoClient timeout fired");
-      this.emit("timeout");
-    });
+		this._state = ConnectionState.connected;
+		this.emit("connected");
+		logger.info("mongoClient.connect connected");
 
-    this._state = ConnectionState.connected;
-    this.emit("connected");
-    logger.info("mongoClient.connect connected");
+		return;
+	}
 
-    return;
-  }
+	/**
+	 * Disconnect the Connection
+	 * @param force Force close, emitting no events (passing to MongoDB)
+	 */
+	public async disconnect(force?: boolean): Promise<void> {
+		switch (this._state) {
+			case ConnectionState.uninitialized:
+			case ConnectionState.disconnected:
+				return;
+			case ConnectionState.disconnecting:
+				return await promisifyEvent(this.once, "disconnected") as void;
+			case ConnectionState.connecting:
+				await promisifyEvent(this.once, "connected");
 
-  /**
-   * Disconnect the Connection
-   * @param force Force close, emitting no events (passing to MongoDB)
-   */
-  public async disconnect(force?: boolean): Promise<void> {
-    switch (this._state) {
-      case ConnectionState.uninitialized:
-      case ConnectionState.disconnected:
-        return;
-      case ConnectionState.disconnecting:
-        return await promisifyEvent(this.once, "disconnected") as void;
-      case ConnectionState.connecting:
-        await promisifyEvent(this.once, "connected");
+				return this.disconnect();
+			case ConnectionState.connected:
+				logger.info("disconnecting");
+				this._state = ConnectionState.disconnecting;
+				this.emit("disconnecting");
 
-        return this.disconnect();
-      case ConnectionState.connected:
-        logger.info("disconnecting");
-        this._state = ConnectionState.disconnecting;
-        this.emit("disconnecting");
+				return await this.mongoClient.close(force);
+		}
+	}
 
-        return await this.mongoClient.close(force);
-    }
-  }
+	public async createCollection(name: string, options?: CollectionCreateOptions): Promise<boolean> {
+		if (!isNullOrUndefined(this.db)) {
+			logger.info("createCollection called");
+			const store = await this.db.createCollection(name, options);
 
-  public async createCollection(name: string, options?: CollectionCreateOptions): Promise<boolean> {
-    if (!isNullOrUndefined(this.db)) {
-      logger.info("createCollection called");
-      const store = await this.db.createCollection(name, options);
+			return !isNullOrUndefined(store);
+		} else {
+			logger.warn("createCollection was called, but \"this.db\" was undefined");
 
-      return !isNullOrUndefined(store);
-    } else {
-      logger.warn("createCollection was called, but \"this.db\" was undefined");
+			return false;
+		}
+	}
 
-      return false;
-    }
-  }
+	public async dropCollection(name: string): Promise<boolean> {
+		if (!isNullOrUndefined(this.db)) {
+			logger.info("dropCollection called");
 
-  public async dropCollection(name: string): Promise<boolean> {
-    if (!isNullOrUndefined(this.db)) {
-      logger.info("dropCollection called");
+			return await this.db.dropCollection(name);
+		} else {
+			logger.warn("dropCollection was called, but \"this.db\" was undefined");
 
-      return await this.db.dropCollection(name);
-    } else {
-      logger.warn("dropCollection was called, but \"this.db\" was undefined");
+			return false;
+		}
+	}
 
-      return false;
-    }
-  }
+	public async dropDatabase(): Promise<boolean> {
+		if (!isNullOrUndefined(this.db)) {
+			logger.info("dropDatabase called");
+			await this.db.dropDatabase();
 
-  public async dropDatabase(): Promise<boolean> {
-    if (!isNullOrUndefined(this.db)) {
-      logger.info("dropDatabase called");
-      await this.db.dropDatabase();
+			return true;
+		} else {
+			logger.warn("dropDatabase was called, but \"this.db\" was undefined");
 
-      return true;
-    } else {
-      logger.warn("dropDatabase was called, but \"this.db\" was undefined");
-
-      return false;
-    }
-  }
+			return false;
+		}
+	}
 }
 
 /**
@@ -163,20 +162,20 @@ export class Connection extends EventEmitter {
  * @param config
  */
 export function createConnection(uri: string, config?: ConnectionConfig) {
-  const con = new Connection(uri, config);
-  connections.push(con);
+	const con = new Connection(uri, config);
+	connections.push(con);
 
-  return con;
+	return con;
 }
 
 /**
  * Disconnect all Stored Connections
  */
 export async function disconnectAll() {
-  const promises: Promise<void>[] = [];
-  for (const connection of connections) {
-    promises.push(connection.disconnect());
-  }
+	const promises: Promise<void>[] = [];
+	for (const connection of connections) {
+		promises.push(connection.disconnect());
+	}
 
-  return Promise.all(promises);
+	return Promise.all(promises);
 }

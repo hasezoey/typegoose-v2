@@ -21,187 +21,185 @@ export type MakeSomeOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T
 
 // the following 3 types are CP from https://stackoverflow.com/a/52473108/8944059
 type IfEquals<X, Y, A, B> =
-  (<T>() => T extends X ? 1 : 2) extends
-  (<T>() => T extends Y ? 1 : 2) ? A : B;
+	(<T>() => T extends X ? 1 : 2) extends
+	(<T>() => T extends Y ? 1 : 2) ? A : B;
 
 type WritableKeysOf<T> = {
-  [P in keyof T]: IfEquals<{ [Q in P]: T[P] }, { -readonly [Q in P]: T[P] }, P, never>
+	[P in keyof T]: IfEquals<{ [Q in P]: T[P] }, { -readonly [Q in P]: T[P] }, P, never>
 }[keyof T];
 type WritablePart<T> = Pick<T, WritableKeysOf<T>>;
 
 export type CreateOptions<T extends Base<any>> = WritablePart<NonFunctionProperties<MakeSomeOptional<T, "_id">>>;
 
 export abstract class Base<T extends Base<any>> {
-  @Prop()
-  public _id!: ObjectID;
+	public static findOne(query: object) {
+		return;
+	}
 
-  constructor(value: CreateOptions<T>) {
-    logger.debug("Constructing %s", this.constructor.name);
+	public static findMany(query: object) {
+		return;
+	}
 
-    const allProps = Reflect.getMetadata(ReflectKeys.AllProps, this) || new Set();
-    for (const prop of allProps) {
-      logger.debug("Assigning Values to Properties for %s", prop);
-      this[prop] = undefined;
+	/**
+	 * Create an Document and save it
+	 * @param value
+	 */
+	public static async create<T extends Base<any>>(
+		this: new (...a: any[]) => T,
+		value: CreateOptions<T>
+	) {
+		const doc = new this(value);
+		await doc.save();
 
-      const propOptions = Reflect.getMetadata(ReflectKeys.PropOptions, this, prop) || {};
-      if ("default" in propOptions) {
-        this[prop] = propOptions.default;
-      }
-    }
-    Object.assign(this, value);
-  }
+		return doc;
+	}
+	@Prop()
+	public _id!: ObjectID;
 
-  public static findOne(query: object) {
-    return;
-  }
+	constructor(value: CreateOptions<T>) {
+		logger.debug("Constructing %s", this.constructor.name);
 
-  public static findMany(query: object) {
-    return;
-  }
+		const allProps = Reflect.getMetadata(ReflectKeys.AllProps, this) || new Set();
+		for (const prop of allProps) {
+			logger.debug("Assigning Values to Properties for %s", prop);
+			this[prop] = undefined;
 
-  /**
-   * Check for an Connection & return it
-   */
-  protected getConnection(): Connection | never {
-    const con: Connection | undefined = this.getModelOptions().connection;
-    assert(con instanceof Connection, new GenericError("Expected to have an Connection assigned!"));
+			const propOptions = Reflect.getMetadata(ReflectKeys.PropOptions, this, prop) || {};
+			if ("default" in propOptions) {
+				this[prop] = propOptions.default;
+			}
+		}
+		Object.assign(this, value);
+	}
 
-    return con;
-  }
+	/**
+	 * Get the Collection name
+	 */
+	public getCollectionName(): string {
+		const collection: string | undefined = this.getModelOptions().collection;
 
-  /**
-   * Get Model Options (or empty object)
-   */
-  protected getModelOptions(): ModelDecoratorOptions {
-    const ref = Reflect.getMetadata(ReflectKeys.PropOptions, this.constructor) ?? {};
+		const glob = getGlobalOptions();
+		if (isNullOrUndefined(collection)) {
+			assert(glob.allowClassNameAsCollection, new GenericError("Collection is undefined and \"allowClassNameAsCollection\" is false! Model: %s", this.getName()));
 
-    return ref;
-  }
+			return this.getName();
+		}
 
-  /**
-   * Returns the class name
-   * QoL method
-   */
-  protected getName(): string {
-    return this.constructor.name;
-  }
+		return collection;
+	}
 
-  /**
-   * Check if the collection exists
-   */
-  protected async createCollection(): Promise<Collection> {
-    const con = this.getConnection();
-    try {
-      return con.mongoClient.db().collection(this.getCollectionName(), { strict: true });
-    } catch (err) {
-      const coll = con.mongoClient.db().collection(this.getCollectionName());
-      // apply indexes
+	/**
+	 * Saves the Document
+	 */
+	public async save() {
+		await this.createCollection();
+		const coll = await this.createCollection();
+		await coll.insertOne(this.serialize());
 
-      return coll;
-    }
-  }
+		return;
+	}
 
-  /**
-   * Get the Collection name
-   */
-  public getCollectionName(): string {
-    const collection: string | undefined = this.getModelOptions().collection;
+	/**
+	 * Stringify-serialize
+	 */
+	public toString(): string {
+		return JSON.stringify(this.serialize());
+	}
 
-    const glob = getGlobalOptions();
-    if (isNullOrUndefined(collection)) {
-      assert(glob.allowClassNameAsCollection, new GenericError("Collection is undefined and \"allowClassNameAsCollection\" is false! Model: %s", this.getName()));
+	/**
+	 * Serialize the current class to a BSON object
+	 * @param getters Include getters?
+	 */
+	public serialize(getters?: boolean): object {
+		const copy: any = Object.assign({}, this);
 
-      return this.getName();
-    }
+		if (getters) {
+			const keys = getAllGetters(this);
+			keys.forEach((key) => {
+				copy[key] = (this as any)[key];
+			});
+		}
 
-    return collection;
-  }
+		return EJSON.serialize(copy);
+	}
 
-  /**
-   * Create an Document and save it
-   * @param value
-   */
-  public static async create<T extends Base<any>>(
-    this: new (...a: any[]) => T,
-    value: CreateOptions<T>
-  ) {
-    const doc = new this(value);
-    await doc.save();
+	/**
+	 * Validate the current instance
+	 * @param classValidatorOptions Options passed to class-validator
+	 * @returns true - if successful
+	 * @throws Error[] - if not
+	 */
+	public async validate(classValidatorOptions?: ValidatorOptions): Promise<boolean> {
+		const promiseCollection: Promise<void | Error>[] = [];
+		for (const key of Object.keys(this)) {
+			const Type: unknown = Reflect.getMetadata(ReflectKeys.Type, this, key);
+			promiseCollection.push(
+				validateProp(this, key, Type, this[key])
+					.catch((err) => err)
+					.then((out) =>
+						typeof out === "boolean" ? void 0 : out)
+			);
+		}
 
-    return doc;
-  }
+		promiseCollection.push(
+			// push class-validator's validator to the array, to apply the same transformation
+			validateOrReject(this, classValidatorOptions)
+				.catch((err) => err)
+		);
 
-  /**
-   * Saves the Document
-   */
-  public async save() {
-    await this.createCollection();
-    const coll = await this.createCollection();
-    await coll.insertOne(this.serialize());
+		return new Promise(async (res, rej) => {
+			// await validateOrReject(this, classValidatorOptions);
+			await Promise.all(promiseCollection).then((out) => {
+				out = out.filter((v) => !isNullOrUndefined(v)).flat();
+				logger.debug("hello", out);
+				if (out.length <= 0) {
+					res(true);
+				} else {
+					rej(out as Error[]);
+				}
+			});
+		});
+	}
 
-    return;
-  }
+	/**
+	 * Check for an Connection & return it
+	 */
+	protected getConnection(): Connection | never {
+		const con: Connection | undefined = this.getModelOptions().connection;
+		assert(con instanceof Connection, new GenericError("Expected to have an Connection assigned!"));
 
-  /**
-   * Stringify-serialize
-   */
-  public toString(): string {
-    return JSON.stringify(this.serialize());
-  }
+		return con;
+	}
 
-  /**
-   * Serialize the current class to a BSON object
-   * @param getters Include getters?
-   */
-  public serialize(getters?: boolean): object {
-    const copy: any = Object.assign({}, this);
+	/**
+	 * Get Model Options (or empty object)
+	 */
+	protected getModelOptions(): ModelDecoratorOptions {
+		const ref = Reflect.getMetadata(ReflectKeys.PropOptions, this.constructor) ?? {};
 
-    if (getters) {
-      const keys = getAllGetters(this);
-      keys.forEach((key) => {
-        copy[key] = (this as any)[key];
-      });
-    }
+		return ref;
+	}
 
-    return EJSON.serialize(copy);
-  }
+	/**
+	 * Returns the class name
+	 * QoL method
+	 */
+	protected getName(): string {
+		return this.constructor.name;
+	}
 
-  /**
-   * Validate the current instance
-   * @param classValidatorOptions Options passed to class-validator
-   * @returns true - if successful
-   * @throws Error[] - if not
-   */
-  public async validate(classValidatorOptions?: ValidatorOptions): Promise<boolean> {
-    const promiseCollection: Promise<void | Error>[] = [];
-    for (const key of Object.keys(this)) {
-      const Type: unknown = Reflect.getMetadata(ReflectKeys.Type, this, key);
-      promiseCollection.push(
-        validateProp(this, key, Type, this[key])
-          .catch((err) => err)
-          .then((out) => {
-            return typeof out === "boolean" ? void 0 : out;
-          })
-      );
-    }
+	/**
+	 * Check if the collection exists
+	 */
+	protected async createCollection(): Promise<Collection> {
+		const con = this.getConnection();
+		try {
+			return con.mongoClient.db().collection(this.getCollectionName(), { strict: true });
+		} catch (err) {
+			const coll = con.mongoClient.db().collection(this.getCollectionName());
+			// apply indexes
 
-    promiseCollection.push(
-      // push class-validator's validator to the array, to apply the same transformation
-      validateOrReject(this, classValidatorOptions)
-        .catch((err) => err)
-    );
-
-    return new Promise(async (res, rej) => {
-      // await validateOrReject(this, classValidatorOptions);
-      await Promise.all(promiseCollection).then((out) => {
-        out = out.filter((v) => !isNullOrUndefined(v)).flat();
-        logger.debug("hello", out);
-        if (out.length <= 0) {
-          res(true);
-        } else {
-          rej(out as Error[]);
-        }
-      });
-    });
-  }
+			return coll;
+		}
+	}
 }
