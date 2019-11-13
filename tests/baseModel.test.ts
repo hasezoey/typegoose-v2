@@ -68,7 +68,6 @@ describe("BasicModelTest", () => {
 			// connection: con
 		})
 		class Testing extends Base<Testing> {
-
 			public get test3(): string {
 				return "";
 			}
@@ -94,13 +93,19 @@ describe("BasicModelTest", () => {
 		changeOptions({ connection: con }, Testing);
 
 		// const doc = await Testing.create({ something: "hi", test3: "hi" });
+		// logger.debug("modleoptions", Reflect.getMetadata(ReflectKeys.PropOptions, Testing));
 		const doc = new Testing({ something: "hi", test3: "hi" });
 		logger.info("validate", await doc.validate().catch((o) => o));
 		logger.info("serialize", doc.serialize(true));
-		// validateProp(Testing, "something", String, "Hello", false);
-		// validateProp(Testing, "something", String, 0, false);
+		// logger.info("toString before", doc.toString());
 
-		await doc.save();
+		// await doc.save();
+
+		// logger.info("toString after", doc.toString());
+
+		// const found = await Testing.findOne({ _id: doc._id });
+
+		// logger.info("found", found);
 
 		await con.disconnect();
 	}, 10000);

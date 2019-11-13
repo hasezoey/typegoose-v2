@@ -1,14 +1,15 @@
 import { EJSON, ObjectID } from "bson";
 import { validateOrReject, ValidatorOptions } from "class-validator";
-import { Collection } from "mongodb";
+import { Collection, FilterQuery, FindOneOptions } from "mongodb";
 import { Connection } from "./connectionHandler";
 import { ReflectKeys } from "./constants/reflectKeys";
 import { Prop } from "./decorators/prop.decorator";
 import { GenericError } from "./errors/genericError";
 import { getGlobalOptions } from "./globalOptions";
-import { assert, getAllGetters, isNullOrUndefined, validateProp } from "./internal/utils";
+import { assert, getAllGetters, getClassName, isNullOrUndefined, validateProp } from "./internal/utils";
 import { logger } from "./logSettings";
 import { IModelDecoratorOptions } from "./types/modelDecoratorTypes";
+import { IPropDecoratorOptions } from "./types/propDecoratorTypes";
 
 // Please dont try to touch the following types, it will just break everything
 
@@ -29,11 +30,30 @@ type WritableKeysOf<T> = {
 }[keyof T];
 type WritablePart<T> = Pick<T, WritableKeysOf<T>>;
 
-export type CreateOptions<T extends Base<any>> = WritablePart<NonFunctionProperties<MakeSomeOptional<T, "_id">>>;
+export type CreateOptions<T extends Base<any>> = WritablePart<NonFunctionProperties<MakeSomeOptional<T, "_id" | "isNew">>>;
+
+export type Query<T extends Base<any>> = WritablePart<NonFunctionProperties<T>>;
 
 export abstract class Base<T extends Base<any>> {
-	public static findOne(query: object): void {
-		return;
+	/**
+	 * Run a findOne query an return undefined or an instance of this class
+	 * @param query The Query
+	 */
+	public static async findOne<T extends Base<any>>(
+		this: Pick<typeof Base, keyof typeof Base> & (new (...a: any[]) => T),
+		query: FilterQuery<Query<T>>,
+		options?: FindOneOptions
+	): Promise<T | undefined> {
+		logger.debug("findOne called on %s", this.name);
+		const con = getConnection(this);
+
+		const coll = con.mongoClient.db().collection(getCollectionName(this));
+
+		const result = await coll.findOne(query, options);
+
+		logger.debug("testy", result);
+
+		return new this(result, false);
 	}
 
 	public static findMany(query: object): void {
@@ -57,45 +77,34 @@ export abstract class Base<T extends Base<any>> {
 	@Prop()
 	public _id!: ObjectID;
 
-	constructor(value: CreateOptions<T>) {
-		logger.debug("Constructing %s", this.constructor.name);
+	public readonly isNew: boolean;
 
-		const allProps = Reflect.getMetadata(ReflectKeys.AllProps, this) || new Set();
-		for (const prop of allProps) {
+	constructor(value: CreateOptions<T>, isNew: boolean = true) {
+		logger.debug("Constructing %s", this.constructor.name, isNew);
+		this.isNew = isNew;
+
+		forAllProps(this, (prop) => {
 			logger.debug("Assigning Values to Properties for %s", prop);
-			this[prop] = undefined;
+			// Initialize all the @Prop's with undefined, if not existing
+			this[prop] = this[prop] ?? undefined;
 
-			const propOptions = Reflect.getMetadata(ReflectKeys.PropOptions, this, prop) || {};
+			const propOptions = getPropOptions(this, prop);
 			if ("default" in propOptions) {
 				this[prop] = propOptions.default;
 			}
-		}
+		});
+
 		Object.assign(this, value);
-	}
-
-	/**
-	 * Get the Collection name
-	 */
-	public getCollectionName(): string {
-		const collection: string | undefined = this.getModelOptions().collection;
-
-		const glob = getGlobalOptions();
-		if (isNullOrUndefined(collection)) {
-			assert(glob.allowClassNameAsCollection, new GenericError("Collection is undefined and \"allowClassNameAsCollection\" is false! Model: %s", this.getName()));
-
-			return this.getName();
-		}
-
-		return collection;
 	}
 
 	/**
 	 * Saves the Document
 	 */
 	public async save(): Promise<void> {
-		await this.createCollection();
+		logger.debug("save called on %s", getClassName(this));
 		const coll = await this.createCollection();
-		await coll.insertOne(this.serialize());
+		const result = await coll.insertOne(this.serialize());
+		this._id = result.insertedId;
 
 		return;
 	}
@@ -103,17 +112,18 @@ export abstract class Base<T extends Base<any>> {
 	/**
 	 * Stringify-serialize
 	 */
-	public toString(): string {
-		return JSON.stringify(this.serialize());
+	public toString(getters?: boolean): string {
+		return JSON.stringify(this.serialize(getters));
 	}
 
 	/**
 	 * Serialize the current class to a BSON object
 	 * Please note that this function does NOT call .validate
+	 * Please also note that this function ONLY serializes properties that have `@Prop` called on them!
 	 * @param getters Include getters?
 	 */
 	public serialize(getters?: boolean): object {
-		const copy: any = Object.assign({}, this);
+		const copy: object = {};
 
 		if (getters) {
 			const keys = getAllGetters(this);
@@ -121,6 +131,15 @@ export abstract class Base<T extends Base<any>> {
 				copy[key] = (this as any)[key];
 			});
 		}
+
+		/**
+		 * To get all the properties to map over to apply Prop-Options
+		 */
+		forAllProps(this, (prop) => {
+			// this commented out code is for later use
+			// const options = Reflect.getMetadata(ReflectKeys.PropOptions, this, prop) ?? {};
+			copy[prop] = this[prop];
+		});
 
 		return EJSON.serialize(copy);
 	}
@@ -133,14 +152,19 @@ export abstract class Base<T extends Base<any>> {
 	 */
 	public async validate(classValidatorOptions?: ValidatorOptions): Promise<boolean> {
 		const promiseCollection: Promise<void | Error>[] = [];
+		const allProps = getAllProps(this);
 		for (const key of Object.keys(this)) {
-			const Type: unknown = Reflect.getMetadata(ReflectKeys.Type, this, key);
-			promiseCollection.push(
-				validateProp(this, key, Type, this[key])
-					.catch((err) => err)
-					.then((out) =>
-						typeof out === "boolean" ? void 0 : out)
-			);
+			if (allProps.has(key)) {
+				const Type: unknown = Reflect.getMetadata(ReflectKeys.Type, this, key);
+				promiseCollection.push(
+					validateProp(this, key, Type, this[key])
+						.catch((err) => err)
+						.then((out) =>
+							typeof out === "boolean" ? void 0 : out)
+				);
+			} else {
+				logger.info("\"%s\" is not in AllProps", key);
+			}
 		}
 
 		promiseCollection.push(
@@ -150,7 +174,6 @@ export abstract class Base<T extends Base<any>> {
 		);
 
 		return new Promise(async (res, rej) => {
-			// await validateOrReject(this, classValidatorOptions);
 			await Promise.all(promiseCollection).then((out) => {
 				out = out.filter((v) => !isNullOrUndefined(v)).flat();
 				logger.debug("hello", out);
@@ -164,44 +187,85 @@ export abstract class Base<T extends Base<any>> {
 	}
 
 	/**
-	 * Check for an Connection & return it
-	 */
-	protected getConnection(): Connection | never {
-		const con: Connection | undefined = this.getModelOptions().connection;
-		assert(con instanceof Connection, new GenericError("Expected to have an Connection assigned!"));
-
-		return con;
-	}
-
-	/**
-	 * Get Model Options (or empty object)
-	 */
-	protected getModelOptions(): IModelDecoratorOptions {
-		const ref = Reflect.getMetadata(ReflectKeys.PropOptions, this.constructor) ?? {};
-
-		return ref;
-	}
-
-	/**
-	 * Returns the class name
-	 * QoL method
-	 */
-	protected getName(): string {
-		return this.constructor.name;
-	}
-
-	/**
 	 * Check if the collection exists
 	 */
 	protected async createCollection(): Promise<Collection> {
-		const con = this.getConnection();
+		const con = getConnection(this);
 		try {
-			return con.mongoClient.db().collection(this.getCollectionName(), { strict: true });
+			return con.mongoClient.db().collection(getCollectionName(this), { strict: true });
 		} catch (err) {
-			const coll = con.mongoClient.db().collection(this.getCollectionName());
+			const coll = con.mongoClient.db().collection(getCollectionName(this));
 			// apply indexes
 
 			return coll;
 		}
 	}
+}
+
+/**
+ * Get Model Options (or empty object)
+ * (Auto Detects if .constructor should be used)
+ */
+function getModelOptions(cl: Base<any> | typeof Base): IModelDecoratorOptions {
+	if (cl instanceof Base) {
+		return Reflect.getMetadata(ReflectKeys.PropOptions, cl.constructor) ?? {};
+	}
+
+	return Reflect.getMetadata(ReflectKeys.PropOptions, cl) ?? {};
+}
+
+/**
+ * Check for an Connection & return it
+ */
+function getConnection(cl: Base<any> | typeof Base): Connection | never {
+	const con: Connection | undefined = getModelOptions(cl).connection;
+	assert(con instanceof Connection, new GenericError("Expected to have an Connection assigned!"));
+
+	return con;
+}
+
+/**
+ * Get the Collection name
+ */
+function getCollectionName(cl: Base<any> | typeof Base): string {
+	const collection: string | undefined = getModelOptions(cl).collection;
+
+	const glob = getGlobalOptions();
+	if (isNullOrUndefined(collection)) {
+		assert(glob.allowClassNameAsCollection, new GenericError("Collection is undefined and \"allowClassNameAsCollection\" is false! Model: %s", getClassName(cl)));
+
+		return getClassName(cl);
+	}
+
+	return collection;
+}
+
+/**
+ * Run cb for each Prop in [Meta]AllProps
+ * @param target Target class
+ * @param cb callback to call for each prop in AllProps
+ */
+function forAllProps(target: object, cb: (prop: string) => void): void {
+	const allProps = getAllProps(target);
+	for (const prop of allProps) {
+		cb(prop);
+	}
+}
+
+/**
+ * Get All the Prop's options (or return empty object)
+ * QoL function
+ * @param target Target class
+ * @param key Target Key
+ */
+function getPropOptions(target: object, key: string): IPropDecoratorOptions {
+	return Reflect.getMetadata(ReflectKeys.PropOptions, target, key) ?? {};
+}
+
+/**
+ * Get All Prop's
+ * @param target Target Class
+ */
+function getAllProps(target: object): Set<string> {
+	return Reflect.getMetadata(ReflectKeys.AllProps, target) ?? new Set();
 }

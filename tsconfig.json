@@ -1,28 +1,28 @@
 {
-  "compilerOptions": {
-    "target": "es6",
-    "lib": [
-      "esnext"
-    ],
-    "removeComments": false,
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "newLine": "LF",
-    "declaration": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "allowJs": false,
-    "outDir": "build",
-    "inlineSourceMap": true,
-    "incremental": true,
-    "tsBuildInfoFile": "./.tsbuildinfo",
-    "strict": false,
-    "strictBindCallApply": true,
-    "strictFunctionTypes": true,
-    "importHelpers": true
-  },
-  "include": [
-    "src/**/*.ts",
-    "tests/**/*.ts"
-  ]
+	"compilerOptions": {
+		"target": "es6",
+		"lib": [
+			"esnext"
+		],
+		"removeComments": false,
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"newLine": "LF",
+		"declaration": true,
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"allowJs": false,
+		"outDir": "build",
+		"inlineSourceMap": true,
+		"incremental": true,
+		"tsBuildInfoFile": "./.tsbuildinfo",
+		"strict": false,
+		"strictBindCallApply": true,
+		"strictFunctionTypes": true,
+		"importHelpers": true
+	},
+	"include": [
+		"src/**/*.ts",
+		"tests/**/*.ts"
+	]
 }

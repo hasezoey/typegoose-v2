@@ -1,5 +1,7 @@
 import * as assertN from "assert";
+import { merge } from "lodash";
 import { ReflectKeys } from "../constants/reflectKeys";
+import { WrongTypeError } from "../errors/propErrors";
 import { TypegooseValidationError } from "../errors/utilErrors";
 import { logger } from "../logSettings";
 
@@ -38,20 +40,6 @@ type TypeOF = "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined
 export function typeCheck(value: unknown, check: TypeOF): boolean {
 	return !isNullOrUndefined(value) && typeof value !== check;
 }
-
-// /**
-//  * Apply a Class to another class
-//  * Copy-Paste from Typescript site itself
-//  * @param derivedCtor The Class to apply onto
-//  * @param baseCtors The Classes that should be applied
-//  */
-// export function applyMixins(derivedCtor: any, baseCtors: any[]) {
-//   baseCtors.forEach((baseCtor) => {
-//     Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
-//       Object.defineProperty(derivedCtor.prototype, name, Object.getOwnPropertyDescriptor(baseCtor.prototype, name));
-//     });
-//   });
-// }
 
 /**
  * Merge value & existing Metadata & Save it to the class
@@ -92,16 +80,16 @@ export function mergeMetadata(rkey: ReflectKeys, value: unknown, cl: object, key
 	let current: object;
 
 	if (typeof key === "string") {
-		current = Reflect.getMetadata(rkey, cl, key) || {};
+		current = Reflect.getMetadata(rkey, cl, key) ?? {};
 	} else {
-		current = Reflect.getMetadata(rkey, cl) || {};
+		current = Reflect.getMetadata(rkey, cl) ?? {};
 	}
 
 	if (isNullOrUndefined(value)) {
 		return current;
 	}
 
-	return Object.assign(current, value);
+	return merge({}, current, value);
 }
 
 /**
@@ -110,7 +98,6 @@ export function mergeMetadata(rkey: ReflectKeys, value: unknown, cl: object, key
  * @param key The Name of the Property
  * @param Type The Expected Type
  * @param value The Current Value
- * @param throwing Throw or return boolean ... Default: true
  */
 export async function validateProp(
 	target: object,
@@ -118,6 +105,9 @@ export async function validateProp(
 	Type: any,
 	value: unknown
 ): Promise<boolean> {
+	if (isNullOrUndefined(Type)) {
+		throw new WrongTypeError(target, key, Type);
+	}
 	logger.debug("validateProp for %s %s %s (name, key, Type)", getClassName(target), key, getClassName(Type));
 
 	function end(msg: string): never {
@@ -165,7 +155,7 @@ export async function validateProp(
  * @param cl
  */
 export function getClassName(cl: any): string {
-	return cl.constructor.name === "Function" ? cl.name : cl.constructor.name;
+	return cl?.constructor?.name === "Function" ? cl.name : cl.constructor.name;
 }
 
 /**
@@ -182,13 +172,10 @@ export function assert(cond: any, msg?: string | Error): asserts cond {
  * @param obj Where all getters come from
  */
 export function getAllGetters(obj: object): string[] {
-	/** Current Prototype to check */
-	let proto = Object.getPrototypeOf(obj);
 	/** Keys to for getters */
 	let keys: string[] = [];
 
-	// get all getters
-	while (!isNullOrUndefined(proto)) {
+	traverseProto(obj, (proto) => {
 		keys = keys.concat(
 			Object.entries(Object.getOwnPropertyDescriptors(proto))
 				.filter(([key, v]) =>
@@ -197,8 +184,23 @@ export function getAllGetters(obj: object): string[] {
 				)
 				.map(([k, v]) => k)
 		);
-		proto = Object.getPrototypeOf(proto);
-	}
+	});
 
 	return keys;
+}
+
+/**
+ * Traverse the prototype chain
+ * @param obj The Object for the prototypes
+ * @param cb Callback function to call when another prototype is found
+ */
+export function traverseProto(obj: object, cb: (proto: any) => void): void {
+	/** Current Prototype to check */
+	let proto = Object.getPrototypeOf(obj);
+
+	// get all getters
+	while (!isNullOrUndefined(proto)) {
+		cb(proto);
+		proto = Object.getPrototypeOf(proto);
+	}
 }
