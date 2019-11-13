@@ -18,7 +18,7 @@ describe("ErrorTests", () => {
 		try {
 			class ErrorModelAsProp {
 				@Model({})
-				public t;
+				public t: undefined;
 			}
 		} catch (err) {
 			expect(err).toBeInstanceOf(TypeError);

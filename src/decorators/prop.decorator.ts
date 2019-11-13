@@ -3,9 +3,9 @@ import { ReflectKeys } from "../constants/reflectKeys";
 import { WrongTypeError } from "../errors/propErrors";
 import { assignMetadata, isNullOrUndefined } from "../internal/utils";
 import { logger } from "../logSettings";
-import { PropDecoratorOptions } from "../types/propDecoratorTypes";
+import { IPropDecoratorOptions } from "../types/propDecoratorTypes";
 
-export function Prop(options?: PropDecoratorOptions) {
+export function Prop(options?: IPropDecoratorOptions): (...a: any) => void {
 	return (target: object, ...args: any[]) => {
 		if (isNullOrUndefined(args) || (Array.isArray(args) && args.length <= 0)) {
 			throw new TypeError(format("\"@Prop\" got called as an class Decorator OR Type is null | undefined, which isnt supported\n"

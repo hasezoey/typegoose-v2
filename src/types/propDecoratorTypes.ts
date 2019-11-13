@@ -1,4 +1,4 @@
-export interface PropDecoratorOptions {
+export interface IPropDecoratorOptions {
 	/**
 	 * Set a default value
 	 */

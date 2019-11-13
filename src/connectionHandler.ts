@@ -6,10 +6,10 @@ import { GenericError } from "./errors/genericError";
 import { connections } from "./internal/data";
 import { assert, isNullOrUndefined, promisifyEvent } from "./internal/utils";
 import { logger } from "./logSettings";
-import { ConnectionConfig } from "./types/connectionStateTypes";
+import { IConnectionConfig } from "./types/connectionStateTypes";
 
 export class Connection extends EventEmitter {
-	public get config(): ConnectionConfig {
+	public get config(): IConnectionConfig {
 		return this._config;
 	}
 	public set config(i) {
@@ -27,7 +27,7 @@ export class Connection extends EventEmitter {
 
 	public connectionState: ConnectionState;
 	public readonly mongoClient: MongoClient;
-	private _config: ConnectionConfig = {
+	private _config: IConnectionConfig = {
 		useNewUrlParser: true,
 		useUnifiedTopology: true
 	};
@@ -35,7 +35,7 @@ export class Connection extends EventEmitter {
 	private _state: ConnectionState = ConnectionState.uninitialized;
 	private db?: Db;
 
-	constructor(uri: string, config?: ConnectionConfig) {
+	constructor(uri: string, config?: IConnectionConfig) {
 		super();
 
 		this.config = typeof config === "object" ? config : {};
@@ -58,7 +58,7 @@ export class Connection extends EventEmitter {
 	/**
 	 * Connect the Connection
 	 */
-	public async connect() {
+	public async connect(): Promise<void> {
 		assert(
 			this._state === ConnectionState.uninitialized || this._state === ConnectionState.disconnected,
 			new GenericError("\"%s\" is not a valid state for connecting!", this._state)
@@ -117,17 +117,23 @@ export class Connection extends EventEmitter {
 		}
 	}
 
+	/**
+	 * Wrapper for this.db.createCollection
+	 * Might be removed later
+	 * @param name
+	 * @param options
+	 */
 	public async createCollection(name: string, options?: CollectionCreateOptions): Promise<boolean> {
 		if (!isNullOrUndefined(this.db)) {
 			logger.info("createCollection called");
 			const store = await this.db.createCollection(name, options);
 
 			return !isNullOrUndefined(store);
-		} else {
-			logger.warn("createCollection was called, but \"this.db\" was undefined");
-
-			return false;
 		}
+
+		logger.warn("createCollection was called, but \"this.db\" was undefined");
+
+		return false;
 	}
 
 	public async dropCollection(name: string): Promise<boolean> {
@@ -135,11 +141,11 @@ export class Connection extends EventEmitter {
 			logger.info("dropCollection called");
 
 			return await this.db.dropCollection(name);
-		} else {
-			logger.warn("dropCollection was called, but \"this.db\" was undefined");
-
-			return false;
 		}
+
+		logger.warn("dropCollection was called, but \"this.db\" was undefined");
+
+		return false;
 	}
 
 	public async dropDatabase(): Promise<boolean> {
@@ -148,11 +154,11 @@ export class Connection extends EventEmitter {
 			await this.db.dropDatabase();
 
 			return true;
-		} else {
-			logger.warn("dropDatabase was called, but \"this.db\" was undefined");
-
-			return false;
 		}
+
+		logger.warn("dropDatabase was called, but \"this.db\" was undefined");
+
+		return false;
 	}
 }
 
@@ -161,7 +167,7 @@ export class Connection extends EventEmitter {
  * @param uri
  * @param config
  */
-export function createConnection(uri: string, config?: ConnectionConfig) {
+export function createConnection(uri: string, config?: IConnectionConfig): Connection {
 	const con = new Connection(uri, config);
 	connections.push(con);
 
@@ -171,11 +177,13 @@ export function createConnection(uri: string, config?: ConnectionConfig) {
 /**
  * Disconnect all Stored Connections
  */
-export async function disconnectAll() {
+export async function disconnectAll(): Promise<void> {
 	const promises: Promise<void>[] = [];
 	for (const connection of connections) {
 		promises.push(connection.disconnect());
 	}
 
-	return Promise.all(promises);
+	await Promise.all(promises);
+
+	return;
 }

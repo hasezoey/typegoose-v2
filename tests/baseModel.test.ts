@@ -12,7 +12,7 @@ describe("BasicModelTest", () => {
 			@Prop()
 			public hello2!: number;
 
-			public get thisShouldNotBeIncluded() {
+			public get thisShouldNotBeIncluded(): number {
 				return 5;
 			}
 		}
@@ -27,7 +27,7 @@ describe("BasicModelTest", () => {
 			@Prop()
 			public hello1!: string;
 
-			public get IDK() {
+			public get IDK(): number {
 				return 5;
 			}
 		}
@@ -68,25 +68,26 @@ describe("BasicModelTest", () => {
 			// connection: con
 		})
 		class Testing extends Base<Testing> {
+
+			public get test3(): string {
+				return "";
+			}
+			public set test3(input) {
+				"";
+			}
+
+			public static test2(): void {
+				// hello
+			}
+
 			@Prop()
 			public something: string;
 
 			@Prop({ default: "Hello from Prop" })
 			public defaulting?: string;
 
-			public test1() {
+			public test1(): void {
 				// hello
-			}
-
-			public static test2() {
-				// hello
-			}
-
-			public get test3() {
-				return "";
-			}
-			public set test3(input) {
-				"";
 			}
 		}
 

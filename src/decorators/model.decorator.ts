@@ -5,9 +5,9 @@ import { GenericError } from "../errors/genericError";
 import { WrongOptionError } from "../errors/propErrors";
 import { assert, isNullOrUndefined, typeCheck } from "../internal/utils";
 import { logger } from "../logSettings";
-import { ModelDecoratorOptions } from "../types/modelDecoratorTypes";
+import { IModelDecoratorOptions } from "../types/modelDecoratorTypes";
 
-export function Model(options: ModelDecoratorOptions) {
+export function Model(options: IModelDecoratorOptions): (...a: any) => void {
 	return (target: any, ...args: any[]) => {
 		if (Array.isArray(args) && args.length > 0) {
 			throw new TypeError(format("\"@Model\" got called as an non-class Decorator, which isnt supported\n"
@@ -78,6 +78,6 @@ export function Model(options: ModelDecoratorOptions) {
  * @param options The Options to change
  * @param target The Target Class
  */
-export function changeOptions<T extends new (...a: any) => Base<any>>(options: ModelDecoratorOptions, target: T) {
+export function changeOptions<T extends new (...a: any) => Base<any>>(options: IModelDecoratorOptions, target: T): void {
 	Model(options)(target);
 }

@@ -8,7 +8,7 @@ import { GenericError } from "./errors/genericError";
 import { getGlobalOptions } from "./globalOptions";
 import { assert, getAllGetters, isNullOrUndefined, validateProp } from "./internal/utils";
 import { logger } from "./logSettings";
-import { ModelDecoratorOptions } from "./types/modelDecoratorTypes";
+import { IModelDecoratorOptions } from "./types/modelDecoratorTypes";
 
 // Please dont try to touch the following types, it will just break everything
 
@@ -32,11 +32,11 @@ type WritablePart<T> = Pick<T, WritableKeysOf<T>>;
 export type CreateOptions<T extends Base<any>> = WritablePart<NonFunctionProperties<MakeSomeOptional<T, "_id">>>;
 
 export abstract class Base<T extends Base<any>> {
-	public static findOne(query: object) {
+	public static findOne(query: object): void {
 		return;
 	}
 
-	public static findMany(query: object) {
+	public static findMany(query: object): void {
 		return;
 	}
 
@@ -47,12 +47,13 @@ export abstract class Base<T extends Base<any>> {
 	public static async create<T extends Base<any>>(
 		this: new (...a: any[]) => T,
 		value: CreateOptions<T>
-	) {
+	): Promise<T> {
 		const doc = new this(value);
 		await doc.save();
 
 		return doc;
 	}
+
 	@Prop()
 	public _id!: ObjectID;
 
@@ -91,7 +92,7 @@ export abstract class Base<T extends Base<any>> {
 	/**
 	 * Saves the Document
 	 */
-	public async save() {
+	public async save(): Promise<void> {
 		await this.createCollection();
 		const coll = await this.createCollection();
 		await coll.insertOne(this.serialize());
@@ -108,6 +109,7 @@ export abstract class Base<T extends Base<any>> {
 
 	/**
 	 * Serialize the current class to a BSON object
+	 * Please note that this function does NOT call .validate
 	 * @param getters Include getters?
 	 */
 	public serialize(getters?: boolean): object {
@@ -174,7 +176,7 @@ export abstract class Base<T extends Base<any>> {
 	/**
 	 * Get Model Options (or empty object)
 	 */
-	protected getModelOptions(): ModelDecoratorOptions {
+	protected getModelOptions(): IModelDecoratorOptions {
 		const ref = Reflect.getMetadata(ReflectKeys.PropOptions, this.constructor) ?? {};
 
 		return ref;

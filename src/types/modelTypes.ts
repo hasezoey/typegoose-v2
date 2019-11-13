@@ -1,4 +1,4 @@
-export interface ModelToJSONOptions {
+export interface IModelToJSONOptions {
 	/**
 	 * Include virtuals in the output? (getters & setters)
 	 */

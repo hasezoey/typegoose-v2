@@ -1,23 +1,23 @@
 import { Connection } from "../connectionHandler";
 
 // tslint:disable:max-line-length
-export interface ModelDecoratorOptions {
+export interface IModelDecoratorOptions {
 	autoIndex?: boolean;
 	collection?: string;
 	capped?: number;
 	autoCreate?: boolean;
-	writeConcern?: ModelDecoratorOptionsWriteConcern;
-	keys?: ModelDecoratorOptionsKeys;
+	writeConcern?: IModelDecoratorOptionsWriteConcern;
+	keys?: IModelDecoratorOptionsKeys;
 	connection?: Connection;
 }
 
-export interface ModelDecoratorOptionsKeys {
+export interface IModelDecoratorOptionsKeys {
 	versionKey?: string;
 	discriminatorKey?: string;
 	timestamps?: boolean;
 }
 
-export interface ModelDecoratorOptionsWriteConcern {
+export interface IModelDecoratorOptionsWriteConcern {
 	/**
 	 * The w option requests acknowledgment that the write operation has propagated to a specified number of mongod instances or to mongod instances with specified tags.
 	 */

@@ -47,7 +47,7 @@ export async function disconnect(): Promise<void> {
 /**
  * Only execute this function when the tests were not started
  */
-async function firstConnect() {
+async function firstConnect(): Promise<void> {
 	isFirst = false;
 	await currentConnection.dropDatabase(); // to always have a clean database
 

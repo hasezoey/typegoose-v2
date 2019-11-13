@@ -21,4 +21,5 @@ import { MongoClientOptions } from "mongodb";
 //   authSource?: string;
 // }
 
-export interface ConnectionConfig extends MongoClientOptions { }
+// tslint:disable-next-line:no-empty-interface
+export interface IConnectionConfig extends MongoClientOptions { }

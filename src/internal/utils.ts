@@ -7,7 +7,7 @@ import { logger } from "../logSettings";
  * isNullOrUndefined, because deprecated in NodeJS
  * @param value The Value to check
  */
-export function isNullOrUndefined(value: unknown) {
+export function isNullOrUndefined(value: unknown): value is null | undefined {
 	return value === null || value === undefined;
 }
 
@@ -35,7 +35,7 @@ type TypeOF = "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined
  * @param value Value to Check
  * @param check a value from "typeof"
  */
-export function typeCheck(value: unknown, check: TypeOF) {
+export function typeCheck(value: unknown, check: TypeOF): boolean {
 	return !isNullOrUndefined(value) && typeof value !== check;
 }
 
@@ -164,7 +164,7 @@ export async function validateProp(
  * I hope this works
  * @param cl
  */
-export function getClassName(cl: any) {
+export function getClassName(cl: any): string {
 	return cl.constructor.name === "Function" ? cl.name : cl.constructor.name;
 }
 
