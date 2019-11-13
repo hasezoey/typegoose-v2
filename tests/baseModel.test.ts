@@ -76,5 +76,7 @@ describe("BasicModelTest", () => {
     logger.info("return", await doc.validate(false));
 
     await doc.save();
+
+    await con.disconnect();
   }, 10000);
 });
