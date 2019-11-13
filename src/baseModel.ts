@@ -1,4 +1,5 @@
 import { EJSON, ObjectID } from "bson";
+import { validateOrReject, ValidatorOptions } from "class-validator";
 import { Collection } from "mongodb";
 import { Connection } from "./connectionHandler";
 import { ReflectKeys } from "./constants/reflectKeys";
@@ -163,28 +164,40 @@ export abstract class Base<T extends Base<any>> {
 
   /**
    * Validate the current instance
-   * @param throwing Throw or return boolean ... Default: true
+   * @param classValidatorOptions Options passed to class-validator
+   * @returns true - if successful
+   * @throws Error[] - if not
    */
-  public async validate(throwing?: boolean): Promise<boolean | never> {
-    throwing = throwing ?? true;
-    const promiseCollection: Promise<boolean>[] = [];
+  public async validate(classValidatorOptions?: ValidatorOptions): Promise<boolean> {
+    const promiseCollection: Promise<void | Error>[] = [];
     for (const key of Object.keys(this)) {
       const Type: unknown = Reflect.getMetadata(ReflectKeys.Type, this, key);
-      promiseCollection.push(validateProp(this, key, Type, this[key], true));
+      promiseCollection.push(
+        validateProp(this, key, Type, this[key])
+          .catch((err) => err)
+          .then((out) => {
+            return typeof out === "boolean" ? void 0 : out;
+          })
+      );
     }
 
-    try {
-      await Promise.all(promiseCollection);
+    promiseCollection.push(
+      // push class-validator's validator to the array, to apply the same transformation
+      validateOrReject(this, classValidatorOptions)
+        .catch((err) => err)
+    );
 
-      return true;
-    } catch (err) {
-      if (throwing) {
-        throw err;
-      } else {
-        logger.error(err);
-
-        return false;
-      }
-    }
+    return new Promise(async (res, rej) => {
+      // await validateOrReject(this, classValidatorOptions);
+      await Promise.all(promiseCollection).then((out) => {
+        out = out.filter((v) => !isNullOrUndefined(v)).flat();
+        logger.debug("hello", out);
+        if (out.length <= 0) {
+          res(true);
+        } else {
+          rej(out as Error[]);
+        }
+      });
+    });
   }
 }

@@ -6,7 +6,7 @@ export class NoValidClass extends TypeError {
   }
 }
 
-export class ValidationError extends Error {
+export class TypegooseValidationError extends Error {
   constructor(target: object, key: string, reason: string) {
     super(`"${getClassName(target)}.${key}"'s validation failed, reason: ${reason}`);
   }

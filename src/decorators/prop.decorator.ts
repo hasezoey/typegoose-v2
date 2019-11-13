@@ -1,7 +1,7 @@
 import { format } from "util";
 import { ReflectKeys } from "../constants/reflectKeys";
 import { WrongTypeError } from "../errors/propErrors";
-import { assert, assignMetadata, isNullOrUndefined } from "../internal/utils";
+import { assignMetadata, isNullOrUndefined } from "../internal/utils";
 import { logger } from "../logSettings";
 import { PropDecoratorOptions } from "../types/propDecoratorTypes";
 

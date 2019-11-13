@@ -1,3 +1,4 @@
+import { Contains } from "class-validator";
 import { Base, Connection, LogLevels, Model, Prop, setLogLevel } from "../src";
 import { logger } from "../src/logSettings";
 import { config } from "./utils/config";
@@ -36,6 +37,27 @@ describe("BasicModelTest", () => {
     expect(doc.serialize(true)).toStrictEqual({ hello1: "Hello 1", IDK: 5, _id: null });
   });
 
+  it("should reject with validation errors", async () => {
+    expect.assertions(2);
+    class BasicModelValidation extends Base<BasicModelValidation> {
+      @Prop({ required: true }) // basic test for typegoose-validation
+      public testreq?: string;
+
+      @Prop() // basic test for class-validator validation
+      @Contains("Hello")
+      public something: string;
+    }
+
+    const doc = new BasicModelValidation({ something: "hi" });
+
+    try {
+      await doc.validate();
+    } catch (err) {
+      expect(err).toBeArray();
+      expect(err).toBeArrayOfSize(2);
+    }
+  });
+
   it("testy", async () => {
     setLogLevel(LogLevels.TRACE);
 
@@ -70,10 +92,10 @@ describe("BasicModelTest", () => {
 
     // const doc = await Testing.create({ something: "hi", test3: "hi" });
     const doc = new Testing({ something: "hi", test3: "hi" });
+    logger.info("validate", await doc.validate().catch((o) => o));
     logger.info("serialize", doc.serialize(true));
     // validateProp(Testing, "something", String, "Hello", false);
     // validateProp(Testing, "something", String, 0, false);
-    logger.info("return", await doc.validate(false));
 
     await doc.save();
 

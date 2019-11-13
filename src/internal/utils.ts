@@ -1,6 +1,6 @@
 import * as assertN from "assert";
 import { ReflectKeys } from "../constants/reflectKeys";
-import { ValidationError } from "../errors/utilErrors";
+import { TypegooseValidationError } from "../errors/utilErrors";
 import { logger } from "../logSettings";
 
 /**
@@ -116,20 +116,12 @@ export async function validateProp(
   target: object,
   key: string,
   Type: any,
-  value: unknown,
-  throwing?: boolean
+  value: unknown
 ): Promise<boolean> {
-  throwing = typeof throwing === "boolean" ? throwing : true;
   logger.debug("validateProp for %s %s %s (name, key, Type)", getClassName(target), key, getClassName(Type));
 
-  function end(msg: string) {
-    if (throwing) {
-      throw new ValidationError(target, key, msg);
-    } else {
-      logger.error(`"${getClassName(target)}.${key}"'s validation failed, reason: ${msg}`);
-
-      return false;
-    }
+  function end(msg: string): never {
+    throw new TypegooseValidationError(target, key, msg);
   }
 
   const propOptions = Reflect.getMetadata(ReflectKeys.PropOptions, target, key) || {};
