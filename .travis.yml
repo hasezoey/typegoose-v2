@@ -5,8 +5,9 @@ node_js: [
     13,
     12,
   ]
-script: | # this has to be used, otherwise it executes the tests twice (because of "default build script")
-  npm run mocha
+script:
+  | # this has to be used, otherwise it executes the tests twice (because of "default build script")
+  npm run test:coverage
   if [ $? -ne 0 ]; then exit 1; fi # this is added because sometimes it fails and exists with 0 in travis
   if [ $TRAVIS_NODE_VERSION == "12" ]; then npx coveralls; fi
 stages:
@@ -15,7 +16,7 @@ stages:
   # - deploy
 jobs:
   include:
-    - name: 'Test Compile Ability'
+    - name: "Test Compile Ability"
       stage: compile
       node_js: 10 # use version 10, because that speeds up the task, because travis's default is v10
       script: |
