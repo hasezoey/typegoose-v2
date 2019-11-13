@@ -143,12 +143,16 @@ export abstract class Base<T extends Base<any>> {
   }
 
   /**
-   * As toJSON only that it returns it stringifyed
+   * Stringify-serialize
    */
   public toString(): string {
     return JSON.stringify(this.serialize());
   }
 
+  /**
+   * Serialize the current class to a BSON object
+   * @param getters Include getters?
+   */
   public serialize(getters?: boolean): object {
     const copy: any = Object.assign({}, this);
 
