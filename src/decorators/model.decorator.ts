@@ -1,3 +1,4 @@
+import { merge } from "lodash";
 import { format } from "util";
 import { Base } from "../baseModel";
 import { ReflectKeys } from "../constants/reflectKeys";
@@ -69,7 +70,9 @@ export function Model(options: IModelDecoratorOptions): (...a: any) => void {
 			}
 		}
 
-		Reflect.defineMetadata(ReflectKeys.PropOptions, options, target);
+		const old = Reflect.getMetadata(ReflectKeys.PropOptions, target);
+
+		Reflect.defineMetadata(ReflectKeys.PropOptions, merge({}, old, options), target);
 	};
 }
 
