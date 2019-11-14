@@ -68,7 +68,15 @@ To ask questions or just talk with us [join our Discord Server](https://discord.
 
 ## Integration
 
-This Project should work with `class-transformer` & `class-validator`
+### class-validator
+
+This Project works with `class-validator` & uses it internally
+
+-> Please note, that if you dont want to use `class-validator`, there is currently a [known "warning message" of `No metadata found`](https://github.com/typestack/class-validator/issues/279)
+
+### class-transformer
+
+This Project should not have any issues with `class-transformer`
 
 ## Additonal Infos
 
