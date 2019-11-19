@@ -45,7 +45,7 @@ describe("BasicModelTest", () => {
 
 			@Prop() // basic test for class-validator validation
 			@Contains("Hello")
-			public something: string;
+			public something!: string;
 		}
 
 		const doc = new BasicModelValidation({ something: "hi" });
@@ -80,7 +80,7 @@ describe("BasicModelTest", () => {
 			}
 
 			@Prop()
-			public something: string;
+			public something!: string;
 
 			@Prop({ default: "Hello from Prop" })
 			public defaulting?: string;
@@ -103,7 +103,8 @@ describe("BasicModelTest", () => {
 
 		// logger.info("toString after", doc.toString());
 
-		// const found = await Testing.findOne({ _id: doc._id });
+		const found = await Testing.findOne({ _id: doc._id });
+		// const created = await Testing.create({ something: "hi", test3: "hi" });
 
 		// logger.info("found", found);
 

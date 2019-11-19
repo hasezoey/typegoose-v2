@@ -16,9 +16,9 @@
 		"inlineSourceMap": true,
 		"incremental": true,
 		"tsBuildInfoFile": "./.tsbuildinfo",
-		"strict": false,
-		"strictBindCallApply": true,
-		"strictFunctionTypes": true,
+		"alwaysStrict": true,
+		"strict": true,
+		"noImplicitReturns": true,
 		"importHelpers": true
 	},
 	"include": [

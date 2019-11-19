@@ -24,7 +24,7 @@ export function isNullOrUndefined(value: unknown): value is null | undefined {
  */
 export async function promisifyEvent(func: (..._: any) => any, event: string | symbol): Promise<unknown> {
 	return new Promise((res) => {
-		func(event, (...args) => {
+		func(event, (...args: any[]) => {
 			res(...args);
 		});
 	});

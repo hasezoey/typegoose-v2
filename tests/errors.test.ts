@@ -42,7 +42,7 @@ describe("ErrorTests", () => {
 		try {
 			class ErrorTypeAsNull {
 				@Prop()
-				public t: null;
+				public t!: null;
 			}
 		} catch (err) {
 			expect(err).toBeInstanceOf(WrongTypeError);

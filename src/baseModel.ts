@@ -1,5 +1,6 @@
 import { EJSON, ObjectID } from "bson";
 import { validateOrReject, ValidatorOptions } from "class-validator";
+import { get, set } from "lodash";
 import { Collection, FilterQuery, FindOneOptions } from "mongodb";
 import { Connection } from "./connectionHandler";
 import { ReflectKeys } from "./constants/reflectKeys";
@@ -10,6 +11,7 @@ import { assert, getAllGetters, getClassName, isNullOrUndefined, validateProp } 
 import { logger } from "./logSettings";
 import { IModelDecoratorOptions } from "./types/modelDecoratorTypes";
 import { IPropDecoratorOptions } from "./types/propDecoratorTypes";
+import { IObjectStringAny } from "./types/utilityTypes";
 
 // Please dont try to touch the following types, it will just break everything
 
@@ -34,6 +36,13 @@ export type CreateOptions<T extends Base<any>> = WritablePart<NonFunctionPropert
 
 export type Query<T extends Base<any>> = WritablePart<NonFunctionProperties<T>>;
 
+// End of magic types
+
+/*
+ * Note:
+ * "get" & "set" from lodash are used, because otherwise typescript would complain in strict mode
+ */
+
 export abstract class Base<T extends Base<any>> {
 	/**
 	 * Run a findOne query an return undefined or an instance of this class
@@ -45,23 +54,28 @@ export abstract class Base<T extends Base<any>> {
 		options?: FindOneOptions
 	): Promise<T | undefined> {
 		logger.debug("findOne called on %s", this.name);
-		const con = getConnection(this);
 
+		const con = getConnection(this);
 		const coll = con.mongoClient.db().collection(getCollectionName(this));
 
 		const result = await coll.findOne(query, options);
 
-		logger.debug("testy", result);
+		logger.debug("hello result", result);
 
 		return new this(result, false);
 	}
 
+	/**
+	 * Run a findMany query and return an array (empty or instances of this class)
+	 * @param query The Query
+	 */
 	public static findMany(query: object): void {
 		return;
 	}
 
 	/**
 	 * Create an Document and save it
+	 * QoL function
 	 * @param value
 	 */
 	public static async create<T extends Base<any>>(
@@ -86,11 +100,11 @@ export abstract class Base<T extends Base<any>> {
 		forAllProps(this, (prop) => {
 			logger.debug("Assigning Values to Properties for %s", prop);
 			// Initialize all the @Prop's with undefined, if not existing
-			this[prop] = this[prop] ?? undefined;
+			set(this, prop, get(this, prop) ?? undefined);
 
 			const propOptions = getPropOptions(this, prop);
 			if ("default" in propOptions) {
-				this[prop] = propOptions.default;
+				set(this, prop, propOptions.default);
 			}
 		});
 
@@ -104,6 +118,9 @@ export abstract class Base<T extends Base<any>> {
 		logger.debug("save called on %s", getClassName(this));
 		const coll = await this.createCollection();
 		const result = await coll.insertOne(this.serialize());
+		if (!(result.insertedId instanceof ObjectID)) {
+			throw new GenericError("Expected \"insertedId\" to be an instance of ObjectID!");
+		}
 		this._id = result.insertedId;
 
 		return;
@@ -123,12 +140,12 @@ export abstract class Base<T extends Base<any>> {
 	 * @param getters Include getters?
 	 */
 	public serialize(getters?: boolean): object {
-		const copy: object = {};
+		const copy: IObjectStringAny = {};
 
 		if (getters) {
 			const keys = getAllGetters(this);
 			keys.forEach((key) => {
-				copy[key] = (this as any)[key];
+				copy[key] = get(this, key);
 			});
 		}
 
@@ -138,7 +155,7 @@ export abstract class Base<T extends Base<any>> {
 		forAllProps(this, (prop) => {
 			// this commented out code is for later use
 			// const options = Reflect.getMetadata(ReflectKeys.PropOptions, this, prop) ?? {};
-			copy[prop] = this[prop];
+			copy[prop] = get(this, prop);
 		});
 
 		return EJSON.serialize(copy);
@@ -157,7 +174,7 @@ export abstract class Base<T extends Base<any>> {
 			if (allProps.has(key)) {
 				const Type: unknown = Reflect.getMetadata(ReflectKeys.Type, this, key);
 				promiseCollection.push(
-					validateProp(this, key, Type, this[key])
+					validateProp(this, key, Type, get(this, key))
 						.catch((err) => err)
 						.then((out) =>
 							typeof out === "boolean" ? void 0 : out)

@@ -25,7 +25,6 @@ export class Connection extends EventEmitter {
 		return this._state;
 	}
 
-	public connectionState: ConnectionState;
 	public readonly mongoClient: MongoClient;
 	private _config: IConnectionConfig = {
 		useNewUrlParser: true,
