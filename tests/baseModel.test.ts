@@ -1,5 +1,7 @@
 import { Contains } from "class-validator";
+import { ObjectId } from "mongodb";
 import { Base, changeOptions, Connection, LogLevels, Model, Prop, setLogLevel } from "../src";
+import { assert, isNullOrUndefined } from "../src/internal/utils";
 import { logger } from "../src/logSettings";
 import { config } from "./utils/config";
 
@@ -58,6 +60,124 @@ describe("BasicModelTest", () => {
 		}
 	});
 
+	describe("Tests with default connection", () => {
+		let con: Connection;
+		beforeAll(async () => {
+			con = new Connection(`mongodb://${config.IP}:${config.Port}/${config.DataBase}`);
+			await con.connect();
+		});
+		afterAll(async () => {
+			await con.disconnect();
+		});
+
+		it("should create & save a document", async () => {
+			expect.assertions(6);
+			@Model({
+				connection: con,
+				dropOnCreate: true
+			})
+			class BasicCreateAndSave extends Base<BasicCreateAndSave> {
+				@Prop()
+				public hello!: string;
+			}
+
+			const doc = new BasicCreateAndSave({ hello: "Hi" });
+			expect(doc.hello).toEqual("Hi");
+			expect(doc._id).toEqual(undefined);
+			expect(doc.isNew).toEqual(true);
+
+			await doc.save();
+			expect(doc.hello).toEqual("Hi");
+			expect(doc._id).toBeInstanceOf(ObjectId);
+			expect(doc.isNew).toEqual(false);
+		});
+
+		it("should make use of \".create\"", async () => {
+			expect.assertions(3);
+			@Model({
+				connection: con,
+				dropOnCreate: true
+			})
+			class BasicCreateQoL extends Base<BasicCreateQoL> {
+				@Prop()
+				public hello!: string;
+			}
+
+			const doc = await BasicCreateQoL.create({ hello: "Hi" });
+			expect(doc.hello).toEqual("Hi");
+			expect(doc._id).toBeInstanceOf(ObjectId);
+			expect(doc.isNew).toEqual(false);
+		});
+
+		it("should make use of \".findOne\"", async () => {
+			expect.assertions(3);
+			@Model({
+				connection: con,
+				dropOnCreate: true
+			})
+			class BasicFindOne extends Base<BasicFindOne> {
+				@Prop()
+				public hello!: string;
+			}
+
+			const doc = await BasicFindOne.create({ hello: "Hi" });
+
+			const found = await BasicFindOne.findOne({ hello: doc.hello }); // not testing _id, because this will be in findById
+			assert(!isNullOrUndefined(found));
+			expect(found.hello).toEqual("Hi");
+			expect(found._id).toBeInstanceOf(ObjectId);
+			expect(found.isNew).toEqual(false);
+		});
+
+		it("should make use of \".findById\"", async () => {
+			expect.assertions(3);
+			@Model({
+				connection: con,
+				dropOnCreate: true
+			})
+			class BasicFindById extends Base<BasicFindById> {
+				@Prop()
+				public hello!: string;
+			}
+
+			const doc = await BasicFindById.create({ hello: "Hi" });
+
+			const found = await BasicFindById.findById(doc._id);
+			assert(!isNullOrUndefined(found));
+			expect(found.hello).toEqual("Hi");
+			expect(found._id).toBeInstanceOf(ObjectId);
+			expect(found.isNew).toEqual(false);
+		});
+
+		it("should make use of \".findMany\"", async () => {
+			expect.assertions(8);
+			@Model({
+				connection: con,
+				dropOnCreate: true
+			})
+			class BasicFindMany extends Base<BasicFindMany> {
+				@Prop()
+				public hello!: string;
+			}
+
+			await BasicFindMany.create({ hello: "Hi1" });
+			await BasicFindMany.create({ hello: "Hi2" });
+
+			const found = await BasicFindMany.findMany({});
+
+			expect(found).toBeArray();
+			expect(found).toBeArrayOfSize(2);
+
+			expect(found[0].hello).toEqual("Hi1");
+			expect(found[0]._id).toBeInstanceOf(ObjectId);
+			expect(found[0].isNew).toEqual(false);
+
+			expect(found[1].hello).toEqual("Hi2");
+			expect(found[1]._id).toBeInstanceOf(ObjectId);
+			expect(found[1].isNew).toEqual(false);
+		});
+	});
+
 	it("testy", async () => {
 		setLogLevel(LogLevels.TRACE);
 
@@ -99,14 +219,18 @@ describe("BasicModelTest", () => {
 		logger.info("serialize", doc.serialize(true));
 		// logger.info("toString before", doc.toString());
 
-		// await doc.save();
+		await doc.save();
 
 		// logger.info("toString after", doc.toString());
 
 		const found = await Testing.findOne({ _id: doc._id });
 		// const created = await Testing.create({ something: "hi", test3: "hi" });
 
-		// logger.info("found", found);
+		logger.info("found", found);
+
+		// const foundbyid = await Testing.findById(doc._id);
+
+		// logger.info("foundbyid", foundbyid);
 
 		await con.disconnect();
 	}, 10000);

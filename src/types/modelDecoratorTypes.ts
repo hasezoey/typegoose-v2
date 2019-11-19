@@ -9,6 +9,11 @@ export interface IModelDecoratorOptions {
 	writeConcern?: IModelDecoratorOptionsWriteConcern;
 	keys?: IModelDecoratorOptionsKeys;
 	connection?: Connection;
+	/**
+	 * Drop Collection on first Write?
+	 * For Testing Purposes ONLY
+	 */
+	dropOnCreate?: boolean;
 }
 
 export interface IModelDecoratorOptionsKeys {

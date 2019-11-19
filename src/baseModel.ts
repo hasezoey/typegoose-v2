@@ -1,7 +1,7 @@
-import { EJSON, ObjectID } from "bson";
+import { EJSON } from "bson";
 import { validateOrReject, ValidatorOptions } from "class-validator";
 import { get, set } from "lodash";
-import { Collection, FilterQuery, FindOneOptions } from "mongodb";
+import { Collection, FilterQuery, FindOneOptions, ObjectId } from "mongodb";
 import { Connection } from "./connectionHandler";
 import { ReflectKeys } from "./constants/reflectKeys";
 import { Prop } from "./decorators/prop.decorator";
@@ -17,8 +17,8 @@ import { IObjectStringAny } from "./types/utilityTypes";
 
 // the 2 types below, are Copy-Pastes from Typescript's docs
 // tslint:disable-next-line:ban-types
-type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
-type NonFunctionProperties<T> = Pick<T, NonFunctionPropertyNames<T>>;
+type FunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? K : never }[keyof T];
+type OmitFunctionProperties<T> = Omit<T, FunctionPropertyNames<T>>;
 
 export type MakeSomeOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
@@ -32,9 +32,13 @@ type WritableKeysOf<T> = {
 }[keyof T];
 type WritablePart<T> = Pick<T, WritableKeysOf<T>>;
 
-export type CreateOptions<T extends Base<any>> = WritablePart<NonFunctionProperties<MakeSomeOptional<T, "_id" | "isNew">>>;
+export type CreateOptions<T extends Base<any>> = WritablePart<
+	OmitFunctionProperties<
+		MakeSomeOptional<T, "_id" | "isNew">
+	>
+>;
 
-export type Query<T extends Base<any>> = WritablePart<NonFunctionProperties<T>>;
+export type Query<T extends Base<any>> = WritablePart<OmitFunctionProperties<T>>;
 
 // End of magic types
 
@@ -60,17 +64,52 @@ export abstract class Base<T extends Base<any>> {
 
 		const result = await coll.findOne(query, options);
 
-		logger.debug("hello result", result);
-
 		return new this(result, false);
+	}
+
+	/**
+	 * Find a document by its ID only
+	 * @param id The ID to search for
+	 * @param options FindOne Options
+	 */
+	public static async findById<T extends Base<any>>(
+		this: Pick<typeof Base, keyof typeof Base> & (new (...a: any[]) => T),
+		id: ObjectId,
+		options?: FindOneOptions
+	): Promise<T | undefined> {
+		logger.debug("findById called on %s", this.name);
+		assert(!isNullOrUndefined(id), new GenericError("Expected \"id\" to be defined!"));
+
+		return await this.findOne({ _id: id } as any, options);
 	}
 
 	/**
 	 * Run a findMany query and return an array (empty or instances of this class)
 	 * @param query The Query
 	 */
-	public static findMany(query: object): void {
-		return;
+	public static async findMany<T extends Base<any>>(
+		this: Pick<typeof Base, keyof typeof Base> & (new (...a: any[]) => T),
+		query: FilterQuery<Query<T>>,
+		options?: FindOneOptions
+	): Promise<T[]> {
+		logger.debug("findMany called on %s", this.name);
+
+		const con = getConnection(this);
+		const coll = con.mongoClient.db().collection(getCollectionName(this));
+		const docs: T[] = [];
+
+		const cursor = await coll.find(query, options);
+
+		await cursor.forEach((doc) => {
+			logger.debug("foreach", doc);
+			assert(!isNullOrUndefined(doc), new GenericError("Expected \"doc\" to not be null/undefined!"));
+
+			docs.push(new this(doc, false));
+		});
+
+		await cursor.close();
+
+		return docs;
 	}
 
 	/**
@@ -89,8 +128,14 @@ export abstract class Base<T extends Base<any>> {
 	}
 
 	@Prop()
-	public _id!: ObjectID;
+	/**
+	 * The ID of the Document
+	 */
+	public _id!: ObjectId;
 
+	/**
+	 * This is "true" if this document has never been saved to the database, otherwise "false"
+	 */
 	public readonly isNew: boolean;
 
 	constructor(value: CreateOptions<T>, isNew: boolean = true) {
@@ -118,10 +163,12 @@ export abstract class Base<T extends Base<any>> {
 		logger.debug("save called on %s", getClassName(this));
 		const coll = await this.createCollection();
 		const result = await coll.insertOne(this.serialize());
-		if (!(result.insertedId instanceof ObjectID)) {
-			throw new GenericError("Expected \"insertedId\" to be an instance of ObjectID!");
+		if (!(result.insertedId instanceof ObjectId)) {
+			throw new GenericError("Expected \"insertedId\" to be an instance of ObjectId!");
 		}
 		this._id = result.insertedId;
+		// using "set" because in typescript it is defined as a readonly
+		set(this, "isNew", false); // because it is saved to the database now
 
 		return;
 	}
@@ -208,9 +255,16 @@ export abstract class Base<T extends Base<any>> {
 	 */
 	protected async createCollection(): Promise<Collection> {
 		const con = getConnection(this);
+		const options = getModelOptions(this);
 		try {
+			if (options.dropOnCreate) {
+				await con.mongoClient.db().dropCollection(getCollectionName(this));
+			}
+
 			return con.mongoClient.db().collection(getCollectionName(this), { strict: true });
 		} catch (err) {
+			// disable this again, because it was re-created
+			options.dropOnCreate = false; // this is possible, because it is a reference to the one in the metadata storage
 			const coll = con.mongoClient.db().collection(getCollectionName(this));
 			// apply indexes
 
